@@ -45,7 +45,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             picker.Canceled += async (sender, args) =>
             {
                 await picker.DismissViewControllerAsync(true);
-                picker.Dispose();
+                //picker.Dispose();
                 modalHost.NativeModalViewControllerDisappearedOnItsOwn();
                 tcs.SetCanceled();
                 tcs = null;
@@ -56,6 +56,8 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
         {
             savingTaskAction = saving;
             picker.SourceType = UIImagePickerControllerSourceType.PhotoLibrary;
+            picker.AllowsEditing = true;
+            picker.AllowsImageEditing = true;
             return ChoosePictureCommon(maxPixelDimension, percentQuality);
         }
 
@@ -65,6 +67,8 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             picker.SourceType = UIImagePickerControllerSourceType.Camera;
             picker.CameraCaptureMode = UIImagePickerControllerCameraCaptureMode.Photo;
             picker.CameraDevice = useFrontCamera ? UIImagePickerControllerCameraDevice.Front : UIImagePickerControllerCameraDevice.Rear;
+            picker.AllowsEditing = true;
+            picker.AllowsImageEditing = true;
             return ChoosePictureCommon(maxPixelDimension, percentQuality);
         }
 
@@ -91,8 +95,6 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
 
         private async Task HandleImagePick(UIImage image)
         {
-            await Task.Yield();
-
             string imageFile = null;
             if (image != null)
             {
@@ -127,12 +129,12 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 }
             }
 
-            MvxSingleton<IMvxMainThreadDispatcher>.Instance.RequestMainThreadAction(() =>
+            NSThread.MainThread.InvokeOnMainThread(() =>
             {
                 picker.DismissViewController(true, () =>
                 {
                     modalHost.NativeModalViewControllerDisappearedOnItsOwn();
-                    picker.Dispose();
+                    //picker.Dispose();
                     //Fix still image problem when used twice on iOS 7
                     GC.Collect();
 
