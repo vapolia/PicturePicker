@@ -3,8 +3,10 @@ using System.IO;
 using System.Threading.Tasks;
 using Android.App;
 using Android.Content;
+using Android.Content.PM;
 using Android.Graphics;
 using Android.Provider;
+using Android.Text;
 using MvvmCross.Platform;
 using MvvmCross.Platform.Droid;
 using MvvmCross.Platform.Droid.Platform;
@@ -25,8 +27,6 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
 
         public Task<string> ChoosePictureFromLibrary(Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 80)
         {
-            //throw new NotImplementedException();
-
             var intent = new Intent(Intent.ActionGetContent);
             intent.SetType("image/*");
             var tcs = new TaskCompletionSource<string>();
@@ -42,16 +42,22 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             return tcs.Task;
         }
 
+        public bool HasCamera => Application.Context.PackageManager.HasSystemFeature(PackageManager.FeatureCamera);
+
         public Task<string> TakePicture(Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 0, bool useFrontCamera = false)
         {
-            //throw new NotImplementedException();
-
             var intent = new Intent(MediaStore.ActionImageCapture);
 
             cachedUriLocation = GetNewImageUri();
             intent.PutExtra(MediaStore.ExtraOutput, cachedUriLocation);
             intent.PutExtra("outputFormat", Bitmap.CompressFormat.Jpeg.ToString());
             intent.PutExtra("return-data", true);
+            if (useFrontCamera && Application.Context.PackageManager.HasSystemFeature(PackageManager.FeatureCameraFront))
+            {
+                intent.PutExtra("android.intent.extras.CAMERA_FACING", (int)Android.Hardware.CameraFacing.Front); //lower than LOLLIPOP_MR1
+                intent.PutExtra("android.intent.extras.LENS_FACING_FRONT", 1); //LOLLIPOP_MR1 or greater, except Android7
+                intent.PutExtra("android.intent.extra.USE_FRONT_CAMERA", true); //Android7
+            }
             var tcs = new TaskCompletionSource<string>();
 
             ChoosePictureCommon(MvxIntentRequestCode.PickFromCamera, intent, maxPixelDimension, percentQuality,
@@ -73,9 +79,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             //contentValues.Put(MediaStore.Images.ImageColumnsConsts.Description, "A camera photo");
 
             // Specify where to put the image
-            return
-                Mvx.Resolve<IMvxAndroidGlobals>()
-                    .ApplicationContext.ContentResolver.Insert(MediaStore.Images.Media.ExternalContentUri, contentValues);
+            return Mvx.Resolve<IMvxAndroidGlobals>().ApplicationContext.ContentResolver.Insert(MediaStore.Images.Media.ExternalContentUri, contentValues);
         }
 
         public void ChoosePictureCommon(MvxIntentRequestCode pickId, Intent intent, int maxPixelDimension,
@@ -84,8 +88,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             if (currentRequestParameters != null)
                 throw new MvxException("Cannot request a second picture while the first request is still pending");
 
-            currentRequestParameters = new RequestParameters(maxPixelDimension, percentQuality, pictureAvailable,
-                                                              assumeCancelled);
+            currentRequestParameters = new RequestParameters(maxPixelDimension, percentQuality, pictureAvailable, assumeCancelled);
             StartActivityForResult((int) pickId, intent);
         }
 

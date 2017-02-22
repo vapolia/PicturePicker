@@ -3,7 +3,6 @@ using CoreGraphics;
 using System.Threading.Tasks;
 using Foundation;
 using MvvmCross.Platform;
-using MvvmCross.Platform.Core;
 using MvvmCross.Platform.Exceptions;
 using MvvmCross.Platform.iOS.Platform;
 using MvvmCross.Platform.iOS.Views;
@@ -52,6 +51,10 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             };
         }
 
+        public bool HasCamera => UIImagePickerController.IsSourceTypeAvailable(UIImagePickerControllerSourceType.Camera)
+                        || UIImagePickerController.IsCameraDeviceAvailable(UIImagePickerControllerCameraDevice.Front)
+                        || UIImagePickerController.IsCameraDeviceAvailable(UIImagePickerControllerCameraDevice.Rear);
+
         public Task<string> ChoosePictureFromLibrary(Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 80)
         {
             savingTaskAction = saving;
@@ -63,6 +66,23 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
 
         public Task<string> TakePicture(Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 0, bool useFrontCamera=false)
         {
+            if (UIImagePickerController.IsSourceTypeAvailable(UIImagePickerControllerSourceType.Camera))
+            {
+                Mvx.Warning("Source type Camera not available on this device.");
+                return null;
+            }
+
+            var camera = useFrontCamera ? UIImagePickerControllerCameraDevice.Front : UIImagePickerControllerCameraDevice.Rear;
+            if (!UIImagePickerController.IsCameraDeviceAvailable(camera))
+            {
+                camera = useFrontCamera ? UIImagePickerControllerCameraDevice.Rear : UIImagePickerControllerCameraDevice.Front;
+                if (!UIImagePickerController.IsCameraDeviceAvailable(camera))
+                {
+                    Mvx.Warning("No camera available on this device.");
+                    return null;
+                }
+            }
+
             savingTaskAction = saving;
             picker.SourceType = UIImagePickerControllerSourceType.Camera;
             picker.CameraCaptureMode = UIImagePickerControllerCameraCaptureMode.Photo;
