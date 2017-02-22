@@ -1,0 +1,40 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vapolia.Mvvmcross.PicturePicker", "Vapolia.Mvvmcross.PicturePicker\Vapolia.Mvvmcross.PicturePicker.csproj", "{7917CBEA-5447-483B-A7D8-F43BB2C09443}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vapolia.Mvvmcross.PicturePicker.Touch", "Vapolia.Mvvmcross.PicturePicker.Touch\Vapolia.Mvvmcross.PicturePicker.Touch.csproj", "{F13AC09D-9271-4B5E-B152-1F2CF4F50269}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vapolia.Mvvmcross.PicturePicker.Droid", "Vapolia.Mvvmcross.PicturePicker.Droid\Vapolia.Mvvmcross.PicturePicker.Droid.csproj", "{334B4D60-8E35-47BE-8FFD-88E4DF1E5FB3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nuget", "nuget", "{DFCDF5F1-70B8-45E5-867C-3FDED776C601}"
+	ProjectSection(SolutionItems) = preProject
+		nuget\pack.bat = nuget\pack.bat
+		nuget\Vapolia.Mvvmcross.PicturePicker.nuspec = nuget\Vapolia.Mvvmcross.PicturePicker.nuspec
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7917CBEA-5447-483B-A7D8-F43BB2C09443}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7917CBEA-5447-483B-A7D8-F43BB2C09443}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7917CBEA-5447-483B-A7D8-F43BB2C09443}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7917CBEA-5447-483B-A7D8-F43BB2C09443}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F13AC09D-9271-4B5E-B152-1F2CF4F50269}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F13AC09D-9271-4B5E-B152-1F2CF4F50269}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F13AC09D-9271-4B5E-B152-1F2CF4F50269}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F13AC09D-9271-4B5E-B152-1F2CF4F50269}.Release|Any CPU.Build.0 = Release|Any CPU
+		{334B4D60-8E35-47BE-8FFD-88E4DF1E5FB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{334B4D60-8E35-47BE-8FFD-88E4DF1E5FB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{334B4D60-8E35-47BE-8FFD-88E4DF1E5FB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{334B4D60-8E35-47BE-8FFD-88E4DF1E5FB3}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

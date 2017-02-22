@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <id>Vapolia.Mvvmcross.PicturePicker</id>
+    <version>0.0.0.0</version>
+    <title>Picture picker (photo or library) for iOS and Android (Mvvmcross plugin)</title>
+    <authors>Benjamin Mayrargue</authors>
+    <owners>Benjamin Mayrargue</owners>
+    <licenseUrl>http://www.vapolia.fr</licenseUrl>
+    <projectUrl>http://www.vapolia.fr</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>Picture Picker for Mvvmcross iOS and Android</description>
+    <tags>picture picker xamarin ios android</tags>
+    <dependencies>
+      <group targetFramework="MonoAndroid10">
+        <dependency id="Chance.MvvmCross.Plugins.UserInteraction" version="200.4.5"  />
+        <dependency id="MvvmCross.Platform" version="4.4.0"  />
+        <dependency id="MvvmCross.Plugin.File" version="4.4.0"  />
+      </group>
+
+      <group targetFramework="xamarinios10">
+        <dependency id="Chance.MvvmCross.Plugins.UserInteraction" version="200.4.5" />
+        <dependency id="Cirrious.FluentLayout" version="2.5.0" />
+        <dependency id="MvvmCross.Core" version="4.4.0" />
+        <dependency id="MvvmCross.Platform" version="4.4.0" />
+        <dependency id="MvvmCross.Plugin.File" version="4.4.0"  />
+      </group>
+
+      <group targetFramework="portable-net45+win+wpa81+MonoAndroid10+xamarinios10+MonoTouch10">
+        <dependency id="Chance.MvvmCross.Plugins.UserInteraction" version="200.4.5" />
+        <dependency id="MvvmCross.Platform" version="4.4.0"  />
+      </group>
+    </dependencies>
+  </metadata>
+  <files>
+    <!-- PCL -->
+    <file src="..\Vapolia.Mvvmcross.PicturePicker\bin\Release\Vapolia.Mvvmcross.PicturePicker.dll" target="lib\portable-win8+net45+wpa81+MonoAndroid44+Xamarin.iOS10\Vapolia.Mvvmcross.PicturePicker.dll" />
+
+    <!-- droid -->
+    <file src="..\Vapolia.Mvvmcross.PicturePicker.Droid\bin\Release\Vapolia.Mvvmcross.PicturePicker.dll" target="lib\MonoAndroid44\Vapolia.Mvvmcross.PicturePicker.dll" />
+    <file src="..\Vapolia.Mvvmcross.PicturePicker.Droid\bin\Release\Vapolia.Mvvmcross.PicturePicker.Droid.dll" target="lib\MonoAndroid44\Vapolia.Mvvmcross.PicturePicker.Droid.dll" />
+
+    <!-- ios -->
+    <file src="..\Vapolia.Mvvmcross.PicturePicker.Touch\bin\iPhone\Release\Vapolia.Mvvmcross.PicturePicker.dll" target="lib\Xamarin.iOS\Vapolia.Mvvmcross.PicturePicker.dll" />
+    <file src="..\Vapolia.Mvvmcross.PicturePicker.Touch\bin\iPhone\Release\Vapolia.Mvvmcross.PicturePicker.Touch.dll" target="lib\Xamarin.iOS\Vapolia.Mvvmcross.PicturePicker.Touch.dll" />
+  </files>
+</package>
