@@ -39,9 +39,11 @@
     <!-- droid -->
     <file src="..\Vapolia.Mvvmcross.PicturePicker.Droid\bin\Release\Vapolia.Mvvmcross.PicturePicker.dll" target="lib\MonoAndroid44\Vapolia.Mvvmcross.PicturePicker.dll" />
     <file src="..\Vapolia.Mvvmcross.PicturePicker.Droid\bin\Release\Vapolia.Mvvmcross.PicturePicker.Droid.dll" target="lib\MonoAndroid44\Vapolia.Mvvmcross.PicturePicker.Droid.dll" />
+    <file src="PicturePickerPluginBootstrap.Droid.cs.pp" target="content\MonoAndroid44\Bootstrap\PicturePickerPluginBootstrap.cs.pp" />
 
     <!-- ios -->
     <file src="..\Vapolia.Mvvmcross.PicturePicker.Touch\bin\iPhone\Release\Vapolia.Mvvmcross.PicturePicker.dll" target="lib\Xamarin.iOS\Vapolia.Mvvmcross.PicturePicker.dll" />
     <file src="..\Vapolia.Mvvmcross.PicturePicker.Touch\bin\iPhone\Release\Vapolia.Mvvmcross.PicturePicker.Touch.dll" target="lib\Xamarin.iOS\Vapolia.Mvvmcross.PicturePicker.Touch.dll" />
+    <file src="PicturePickerPluginBootstrap.iOS.cs.pp" target="content\Xamarin.iOS10\Bootstrap\PicturePickerPluginBootstrap.cs.pp" />
   </files>
 </package>
