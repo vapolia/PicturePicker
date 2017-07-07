@@ -45,7 +45,7 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Chance.MvvmCross.Plugins.UserInteraction, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Chance.MvvmCross.Plugins.UserInteraction.200.4.5\lib\portable-net45+win+wpa81\Chance.MvvmCross.Plugins.UserInteraction.dll</HintPath>
+      <HintPath>..\packages\Chance.MvvmCross.Plugins.UserInteraction.200.4.7\lib\portable-net45+win+wpa81\Chance.MvvmCross.Plugins.UserInteraction.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="MvvmCross.Platform, Version=4.0.0.0, Culture=neutral, processorArchitecture=MSIL">

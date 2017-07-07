@@ -17,8 +17,10 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
         private readonly IMvxIosModalHost modalHost;
         private readonly IMvxFileStore fileStore;
         private readonly UIImagePickerController picker;
-        private int maxPixelDimension;
-        private int percentQuality;
+        // ReSharper disable InconsistentNaming
+        private int _maxPixelDimension;
+        private int _percentQuality;
+        // ReSharper restore InconsistentNaming
         private Action<Task<bool>> savingTaskAction;
         private TaskCompletionSource<string> tcs;
 
@@ -66,10 +68,10 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
 
         public Task<string> TakePicture(Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 0, bool useFrontCamera=false)
         {
-            if (UIImagePickerController.IsSourceTypeAvailable(UIImagePickerControllerSourceType.Camera))
+            if (!HasCamera)
             {
                 Mvx.Warning("Source type Camera not available on this device.");
-                return null;
+                return Task.FromResult((string)null);
             }
 
             var camera = useFrontCamera ? UIImagePickerControllerCameraDevice.Front : UIImagePickerControllerCameraDevice.Rear;
@@ -79,7 +81,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 if (!UIImagePickerController.IsCameraDeviceAvailable(camera))
                 {
                     Mvx.Warning("No camera available on this device.");
-                    return null;
+                    return Task.FromResult((string)null);
                 }
             }
 
@@ -97,13 +99,13 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             if (tcs != null)
             {
                 Mvx.Error("PicturePicker: A call is already in progress");
-                return null;
+                return Task.FromResult((string)null);
             }
-            
+
             tcs = new TaskCompletionSource<string>();
 
-            this.maxPixelDimension = maxPixelDimension;
-            this.percentQuality = percentQuality;
+            _maxPixelDimension = maxPixelDimension;
+            _percentQuality = percentQuality;
             if (!modalHost.PresentModalViewController(picker, true))
             {
                 Mvx.Warning("PicturePicker: PresentModalViewController failed");
@@ -124,14 +126,14 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 try
                 {
                     // resize the image
-                    if (maxPixelDimension > 0)
+                    if (_maxPixelDimension > 0)
                     {
                         var oldImage = image;
-                        image = image.ImageToFitSize(new CGSize(maxPixelDimension, maxPixelDimension));
+                        image = image.ImageToFitSize(new CGSize(_maxPixelDimension, _maxPixelDimension));
                         oldImage.Dispose();
                     }
 
-                    using (var data = image.AsJPEG((float) (percentQuality/100.0)))
+                    using (var data = image.AsJPEG((float) (_percentQuality/100.0)))
                     {
                         using (var stream = data.AsStream())
                         {

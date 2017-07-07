@@ -13,13 +13,13 @@
     <tags>picture picker xamarin ios android</tags>
     <dependencies>
       <group targetFramework="MonoAndroid10">
-        <dependency id="Chance.MvvmCross.Plugins.UserInteraction" version="200.4.5"  />
+        <dependency id="Chance.MvvmCross.Plugins.UserInteraction" version="200.4.7"  />
         <dependency id="MvvmCross.Platform" version="4.4.0"  />
         <dependency id="MvvmCross.Plugin.File" version="4.4.0"  />
       </group>
 
       <group targetFramework="xamarinios10">
-        <dependency id="Chance.MvvmCross.Plugins.UserInteraction" version="200.4.5" />
+        <dependency id="Chance.MvvmCross.Plugins.UserInteraction" version="200.4.7" />
         <dependency id="Cirrious.FluentLayout" version="2.5.0" />
         <dependency id="MvvmCross.Core" version="4.4.0" />
         <dependency id="MvvmCross.Platform" version="4.4.0" />
@@ -27,7 +27,7 @@
       </group>
 
       <group targetFramework="portable-net45+win+wpa81+MonoAndroid10+xamarinios10+MonoTouch10">
-        <dependency id="Chance.MvvmCross.Plugins.UserInteraction" version="200.4.5" />
+        <dependency id="Chance.MvvmCross.Plugins.UserInteraction" version="200.4.7" />
         <dependency id="MvvmCross.Platform" version="4.4.0"  />
       </group>
     </dependencies>

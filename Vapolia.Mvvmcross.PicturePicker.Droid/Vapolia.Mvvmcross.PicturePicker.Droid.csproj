@@ -38,11 +38,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Chance.MvvmCross.Plugins.UserInteraction, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Chance.MvvmCross.Plugins.UserInteraction.200.4.5\lib\MonoAndroid10\Chance.MvvmCross.Plugins.UserInteraction.dll</HintPath>
+      <HintPath>..\packages\Chance.MvvmCross.Plugins.UserInteraction.200.4.7\lib\MonoAndroid10\Chance.MvvmCross.Plugins.UserInteraction.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Chance.MvvmCross.Plugins.UserInteraction.Droid, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Chance.MvvmCross.Plugins.UserInteraction.200.4.5\lib\MonoAndroid10\Chance.MvvmCross.Plugins.UserInteraction.Droid.dll</HintPath>
+      <HintPath>..\packages\Chance.MvvmCross.Plugins.UserInteraction.200.4.7\lib\MonoAndroid10\Chance.MvvmCross.Plugins.UserInteraction.Droid.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Mono.Android" />
@@ -69,7 +69,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Bootstrap\FilePluginBootstrap.cs" />
     <Compile Include="PicturePicker.cs" />
     <Compile Include="Plugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
