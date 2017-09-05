@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using CoreGraphics;
 using System.Threading.Tasks;
-using MvvmCross.Plugins.File;
 using UIKit;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Touch
@@ -60,28 +60,19 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             return newImage;
         }
 
-        public static Task<string> SaveImage(IMvxFileStore fs, Stream stream)
+        internal static async Task<string> SaveImage(FileService fs, Stream stream, CancellationToken cancel)
         {
-            var tcs = new TaskCompletionSource<string>();
-
             //Save to file
             var fileName = Guid.NewGuid() + ".tmp.jpg";
-            fs.WriteFile(fileName, outstream => stream.CopyTo(outstream, 64000));
-
-            tcs.SetResult(fileName);
-            return tcs.Task;
+            await fs.WriteFileAsync(fileName, stream, cancel);
+            return fileName;
         }
 
-        public static Task<string> SaveImage(IMvxFileStore fs, IEnumerable<byte> bytes)
+        internal static async Task<string> SaveImage(FileService fs, byte[] bytes, CancellationToken cancel)
         {
-            var tcs = new TaskCompletionSource<string>();
-
-            //Save to file
             var fileName = Guid.NewGuid() + ".tmp.jpg";
-            fs.WriteFile(fileName, bytes);
-            tcs.SetResult(fileName);
-
-            return tcs.Task;
+            await fs.WriteFileAsync(fileName, bytes, cancel);
+            return fileName;
         }
     }
 }

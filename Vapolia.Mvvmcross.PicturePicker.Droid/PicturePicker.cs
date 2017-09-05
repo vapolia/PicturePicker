@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Android.App;
 using Android.Content;
@@ -13,9 +14,8 @@ using MvvmCross.Platform.Droid.Platform;
 using MvvmCross.Platform.Droid.Views;
 using MvvmCross.Platform.Exceptions;
 using MvvmCross.Platform.Platform;
-using MvvmCross.Plugins;
-using MvvmCross.Plugins.File;
 using Uri = Android.Net.Uri;
+using Android.Runtime;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Droid
 {
@@ -31,11 +31,11 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             intent.SetType("image/*");
             var tcs = new TaskCompletionSource<string>();
             ChoosePictureCommon(MvxIntentRequestCode.PickFromFile, intent, maxPixelDimension, percentQuality,
-                stream =>
+                async stream =>
                 {
-                    var fs = Mvx.Resolve<IMvxFileStore>();
+                    var fs = FileService.Instance;
                     var fileName = Guid.NewGuid() + ".tmp";
-                    fs.WriteFile(fileName, outstream => stream.CopyTo(outstream, 64000));
+                    await fs.WriteFileAsync(fileName, stream, CancellationToken.None);
 
                     tcs.SetResult(fileName);
                 }, () => tcs.SetResult(null));
@@ -61,12 +61,10 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             var tcs = new TaskCompletionSource<string>();
 
             ChoosePictureCommon(MvxIntentRequestCode.PickFromCamera, intent, maxPixelDimension, percentQuality,
-                stream =>
+                async stream =>
             {
-                var fs = Mvx.Resolve<IMvxFileStore>();
                 var fileName = Guid.NewGuid() + ".tmp";
-                fs.WriteFile(fileName, outstream => stream.CopyTo(outstream, 64000));
-
+                await FileService.Instance.WriteFileAsync(fileName, stream, CancellationToken.None);
                 tcs.SetResult(fileName);
             }, () => tcs.SetResult(null));
             return tcs.Task;

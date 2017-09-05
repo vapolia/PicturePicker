@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using MvvmCross.Platform;
 using MvvmCross.Platform.Plugins;
-using MvvmCross.Plugins;
+using Android.Runtime;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Droid
 {

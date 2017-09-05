@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using CoreGraphics;
 using System.Threading.Tasks;
 using Foundation;
@@ -6,7 +7,6 @@ using MvvmCross.Platform;
 using MvvmCross.Platform.Exceptions;
 using MvvmCross.Platform.iOS.Platform;
 using MvvmCross.Platform.iOS.Views;
-using MvvmCross.Plugins.File;
 using UIKit;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Touch
@@ -15,7 +15,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
     public sealed class PicturePicker : MvxIosTask, IPicturePicker, IDisposable
     {
         private readonly IMvxIosModalHost modalHost;
-        private readonly IMvxFileStore fileStore;
+        private readonly FileService fileStore = FileService.Instance;
         private readonly UIImagePickerController picker;
         // ReSharper disable InconsistentNaming
         private int _maxPixelDimension;
@@ -27,7 +27,6 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
         public PicturePicker()
         {
             modalHost = Mvx.Resolve<IMvxIosModalHost>();
-            fileStore = Mvx.Resolve<IMvxFileStore>();
 
             picker = new UIImagePickerController();
 
@@ -137,7 +136,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                     {
                         using (var stream = data.AsStream())
                         {
-                            imageFile = await ImageHelper.SaveImage(fileStore, stream).ConfigureAwait(false);
+                            imageFile = await ImageHelper.SaveImage(fileStore, stream, CancellationToken.None).ConfigureAwait(false);
                         }
                     }
                     image.Dispose();
