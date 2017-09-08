@@ -68,6 +68,13 @@ namespace Vapolia.Mvvmcross.PicturePicker
             File.Delete(fullPath);
         }
 
+        public void DeleteFiles(string searchPattern)
+        {
+            var files = Directory.GetFiles(BasePath, searchPattern, SearchOption.TopDirectoryOnly);
+            foreach (var file in files)
+                File.Delete(file);
+        }
+
         public bool TryCopy(string from, string to, bool overwrite)
         {
             try

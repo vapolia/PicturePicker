@@ -6,8 +6,9 @@ using Android.App;
 using Android.Content;
 using Android.Content.PM;
 using Android.Graphics;
+using Android.Media;
+using Android.OS;
 using Android.Provider;
-using Android.Text;
 using MvvmCross.Platform;
 using MvvmCross.Platform.Droid;
 using MvvmCross.Platform.Droid.Platform;
@@ -16,6 +17,7 @@ using MvvmCross.Platform.Exceptions;
 using MvvmCross.Platform.Platform;
 using Uri = Android.Net.Uri;
 using Android.Runtime;
+using Stream = System.IO.Stream;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Droid
 {
@@ -62,11 +64,11 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
 
             ChoosePictureCommon(MvxIntentRequestCode.PickFromCamera, intent, maxPixelDimension, percentQuality,
                 async stream =>
-            {
-                var fileName = Guid.NewGuid() + ".tmp";
-                await FileService.Instance.WriteFileAsync(fileName, stream, CancellationToken.None);
-                tcs.SetResult(fileName);
-            }, () => tcs.SetResult(null));
+                {
+                    var fileName = Guid.NewGuid() + ".tmp";
+                    await FileService.Instance.WriteFileAsync(fileName, stream, CancellationToken.None);
+                    tcs.SetResult(fileName);
+                }, () => tcs.SetResult(null));
             return tcs.Task;
         }
 
@@ -87,7 +89,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                 throw new MvxException("Cannot request a second picture while the first request is still pending");
 
             currentRequestParameters = new RequestParameters(maxPixelDimension, percentQuality, pictureAvailable, assumeCancelled);
-            StartActivityForResult((int) pickId, intent);
+            StartActivityForResult((int)pickId, intent);
         }
 
         protected override void ProcessMvxIntentResult(MvxIntentResultEventArgs result)
@@ -96,7 +98,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
 
             Uri uri;
 
-            switch ((MvxIntentRequestCode) result.RequestCode)
+            switch ((MvxIntentRequestCode)result.RequestCode)
             {
                 case MvxIntentRequestCode.PickFromFile:
                     uri = result.Data?.Data;
@@ -107,11 +109,12 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                 default:
                     // ignore this result - it's not for us
                     MvxTrace.Trace("Unexpected request received from MvxIntentResult - request was {0}",
-                                   result.RequestCode);
+                                    result.RequestCode);
                     return;
             }
 
-            ProcessPictureUri(result, uri);
+            //Do heavy work in a worker thread
+            Task.Run(() => ProcessPictureUri(result, uri));
         }
 
         private void ProcessPictureUri(MvxIntentResultEventArgs result, Uri uri)
@@ -129,7 +132,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                 if (result.ResultCode != Result.Ok)
                 {
                     MvxTrace.Trace("Non-OK result received from MvxIntentResult - {0} - request was {1}",
-                                   result.ResultCode, result.RequestCode);
+                                    result.ResultCode, result.RequestCode);
                     return;
                 }
 
@@ -177,13 +180,13 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
 
         private Bitmap LoadScaledBitmap(Uri uri)
         {
-            ContentResolver contentResolver = Mvx.Resolve<IMvxAndroidGlobals>().ApplicationContext.ContentResolver;
+            var contentResolver = Mvx.Resolve<IMvxAndroidGlobals>().ApplicationContext.ContentResolver;
             var maxDimensionSize = GetMaximumDimension(contentResolver, uri);
+
             Bitmap sampled;
             if (currentRequestParameters.MaxPixelDimension != 0)
             {
-                var sampleSize = (int)Math.Ceiling((maxDimensionSize) /
-                                                    ((double)currentRequestParameters.MaxPixelDimension));
+                var sampleSize = (int)Math.Ceiling(maxDimensionSize / (double)currentRequestParameters.MaxPixelDimension);
                 if (sampleSize < 1)
                 {
                     // this shouldn't happen, but if it does... then trace the error and set sampleSize to 1
@@ -203,18 +206,17 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                 using (var inputStream = contentResolver.OpenInputStream(uri))
                 {
                     var optionsDecode = new BitmapFactory.Options();
-
                     sampled = BitmapFactory.DecodeStream(inputStream, null, optionsDecode);
                 }
             }
+
             try
             {
-                var rotated = ExifRotateBitmap(contentResolver, uri, sampled);
-                return rotated;
+                return ExifRotateBitmap(contentResolver, uri, sampled);
             }
-            catch (Exception pokemon)
+            catch (Exception e)
             {
-                Mvx.Trace("Problem seem in Exit Rotate {0}", pokemon.ToLongString());
+                Mvx.Trace($"ExifRotateBitmap exception {e.ToLongString()}");
                 return sampled;
             }
         }
@@ -223,7 +225,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
         {
             using (var inputStream = contentResolver.OpenInputStream(uri))
             {
-                var optionsDecode = new BitmapFactory.Options {InSampleSize = sampleSize};
+                var optionsDecode = new BitmapFactory.Options { InSampleSize = sampleSize };
 
                 return BitmapFactory.DecodeStream(inputStream, null, optionsDecode);
             }
@@ -234,9 +236,9 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             using (var inputStream = contentResolver.OpenInputStream(uri))
             {
                 var optionsJustBounds = new BitmapFactory.Options
-                    {
-                        InJustDecodeBounds = true
-                    };
+                {
+                    InJustDecodeBounds = true
+                };
                 // ReSharper disable once UnusedVariable
                 var metadataResult = BitmapFactory.DecodeStream(inputStream, null, optionsJustBounds);
                 var maxDimensionSize = Math.Max(optionsJustBounds.OutWidth, optionsJustBounds.OutHeight);
@@ -249,28 +251,57 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             if (bitmap == null)
                 return null;
 
-            var exif = new Android.Media.ExifInterface(GetRealPathFromUri(contentResolver, uri));
-            var rotation = exif.GetAttributeInt(Android.Media.ExifInterface.TagOrientation, (Int32)Android.Media.Orientation.Normal);
-            var rotationInDegrees = ExifToDegrees(rotation);
+            int rotationInDegrees;
+
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.N)
+            {
+                using (var stream = contentResolver.OpenInputStream(uri))
+                {
+                    //API 24+
+                    using (var exif = new ExifInterface(stream))
+                    {
+                        var rotation = exif.GetAttributeInt(ExifInterface.TagOrientation, (int)Android.Media.Orientation.Normal);
+                        rotationInDegrees = ExifToDegrees(rotation);
+                    }
+                }
+            }
+            else
+            {
+                var realPath = GetRealPathFromUri(contentResolver, uri);
+                if (realPath != null)
+                {
+                    var exif = new ExifInterface(realPath);
+                    var rotation = exif.GetAttributeInt(ExifInterface.TagOrientation, (int)Android.Media.Orientation.Normal);
+                    rotationInDegrees = ExifToDegrees(rotation);
+                }
+                else
+                {
+                    rotationInDegrees = 0;
+                    Mvx.Trace("ExifRotateBitmap can not load exif data from external image on api < 24");
+                }
+            }
+
             if (rotationInDegrees == 0)
                 return bitmap;
-
             using (var matrix = new Matrix())
             {
                 matrix.PreRotate(rotationInDegrees);
-                return Bitmap.CreateBitmap(bitmap, 0, 0, bitmap.Width, bitmap.Height, matrix, true);
+                var newBitmap = Bitmap.CreateBitmap(bitmap, 0, 0, bitmap.Width, bitmap.Height, matrix, true);
+                bitmap.Dispose();
+                return newBitmap;
             }
         }
 
         private string GetRealPathFromUri(ContentResolver contentResolver, Uri uri)
         {
-            var proj = new [] { MediaStore.Images.ImageColumns.Data };
+            var proj = new[] { MediaStore.Images.ImageColumns.Data };
             using (var cursor = contentResolver.Query(uri, proj, null, null, null))
             {
                 var columnIndex = cursor.GetColumnIndexOrThrow(MediaStore.Images.ImageColumns.Data);
-                cursor.MoveToFirst();
-                return cursor.GetString(columnIndex);
+                if (cursor.MoveToFirst())
+                    return cursor.GetString(columnIndex);
             }
+            return null;
         }
 
         private static int ExifToDegrees(int exifOrientation)
@@ -293,7 +324,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
         private class RequestParameters
         {
             public RequestParameters(int maxPixelDimension, int percentQuality, Action<Stream> pictureAvailable,
-                                     Action assumeCancelled)
+                                        Action assumeCancelled)
             {
                 PercentQuality = percentQuality;
                 MaxPixelDimension = maxPixelDimension;
