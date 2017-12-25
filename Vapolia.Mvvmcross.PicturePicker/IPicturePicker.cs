@@ -8,15 +8,12 @@ namespace Vapolia.Mvvmcross.PicturePicker
 {
     public interface IPicturePicker
     {
-        /// <summary>
-        /// Returns null if cancelled
-        /// </summary>
-        Task<string> ChoosePictureFromLibrary(Action<Task<bool>> saving = null, int maxPixelDimension=0, int percentQuality=80);
+        Task<bool> ChoosePictureFromLibrary(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension=0, int percentQuality=80);
 
         /// <summary>
         /// Returns null if cancelled
         /// </summary>
-        Task<string> TakePicture(Action<Task<bool>> saving = null, int maxPixelDimension=0, int percentQuality=0, bool useFrontCamera=false);
+        Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension=0, int percentQuality=0, bool useFrontCamera=false);
 
         bool HasCamera { get; }
     }

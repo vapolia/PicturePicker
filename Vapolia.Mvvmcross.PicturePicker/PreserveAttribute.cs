@@ -6,6 +6,6 @@ namespace Vapolia.Mvvmcross.PicturePicker
     internal sealed class PreserveAttribute : Attribute
     {
         public bool AllMembers;
-        public bool Conditional;
+        //public bool Conditional;
     }
 }

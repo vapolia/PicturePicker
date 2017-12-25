@@ -9,7 +9,6 @@ using Android.Graphics;
 using Android.Media;
 using Android.OS;
 using Android.Provider;
-using MvvmCross.Platform;
 using MvvmCross.Platform.Droid;
 using MvvmCross.Platform.Droid.Platform;
 using MvvmCross.Platform.Droid.Views;
@@ -17,6 +16,7 @@ using MvvmCross.Platform.Exceptions;
 using MvvmCross.Platform.Platform;
 using Uri = Android.Net.Uri;
 using Android.Runtime;
+using MvvmCross.Platform.Logging;
 using Stream = System.IO.Stream;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Droid
@@ -24,29 +24,34 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
     [Preserve(AllMembers = true)]
     public class PicturePicker : MvxAndroidTask, IPicturePicker
     {
+        private readonly IMvxLog log;
+        private readonly IMvxAndroidGlobals androidGlobals;
         private Uri cachedUriLocation;
         private RequestParameters currentRequestParameters;
 
-        public Task<string> ChoosePictureFromLibrary(Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 80)
+        public PicturePicker(IMvxLog logger, IMvxAndroidGlobals androidGlobals)
+        {
+            log = logger;
+            this.androidGlobals = androidGlobals;
+        }
+
+        public Task<bool> ChoosePictureFromLibrary(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 80)
         {
             var intent = new Intent(Intent.ActionGetContent);
             intent.SetType("image/*");
-            var tcs = new TaskCompletionSource<string>();
+            var tcs = new TaskCompletionSource<bool>();
             ChoosePictureCommon(MvxIntentRequestCode.PickFromFile, intent, maxPixelDimension, percentQuality,
                 async stream =>
                 {
-                    var fs = FileService.Instance;
-                    var fileName = Guid.NewGuid() + ".tmp";
-                    await fs.WriteFileAsync(fileName, stream, CancellationToken.None);
-
-                    tcs.SetResult(fileName);
-                }, () => tcs.SetResult(null));
+                    await SaveImage(filePath, stream, CancellationToken.None);
+                    tcs.SetResult(true);
+                }, () => tcs.SetResult(false));
             return tcs.Task;
         }
 
         public bool HasCamera => Application.Context.PackageManager.HasSystemFeature(PackageManager.FeatureCamera);
 
-        public Task<string> TakePicture(Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 0, bool useFrontCamera = false)
+        public Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 0, bool useFrontCamera = false)
         {
             var intent = new Intent(MediaStore.ActionImageCapture);
 
@@ -60,16 +65,24 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                 intent.PutExtra("android.intent.extras.LENS_FACING_FRONT", 1); //LOLLIPOP_MR1 or greater, except Android7
                 intent.PutExtra("android.intent.extra.USE_FRONT_CAMERA", true); //Android7
             }
-            var tcs = new TaskCompletionSource<string>();
 
+            var tcs = new TaskCompletionSource<bool>();
             ChoosePictureCommon(MvxIntentRequestCode.PickFromCamera, intent, maxPixelDimension, percentQuality,
                 async stream =>
                 {
-                    var fileName = Guid.NewGuid() + ".tmp";
-                    await FileService.Instance.WriteFileAsync(fileName, stream, CancellationToken.None);
-                    tcs.SetResult(fileName);
-                }, () => tcs.SetResult(null));
+                    await SaveImage(filePath, stream, CancellationToken.None);
+                    tcs.SetResult(true);
+                }, () => tcs.SetResult(false));
             return tcs.Task;
+        }
+
+        private async Task SaveImage(string filePath, Stream stream, CancellationToken cancel)
+        {
+            if (File.Exists(filePath))
+                File.Delete(filePath);
+
+            using (var fileStream = File.OpenWrite(filePath))
+                await stream.CopyToAsync(fileStream, 81920, cancel);
         }
 
         private Uri GetNewImageUri()
@@ -79,7 +92,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             //contentValues.Put(MediaStore.Images.ImageColumnsConsts.Description, "A camera photo");
 
             // Specify where to put the image
-            return Mvx.Resolve<IMvxAndroidGlobals>().ApplicationContext.ContentResolver.Insert(MediaStore.Images.Media.ExternalContentUri, contentValues);
+            return androidGlobals.ApplicationContext.ContentResolver.Insert(MediaStore.Images.Media.ExternalContentUri, contentValues);
         }
 
         public void ChoosePictureCommon(MvxIntentRequestCode pickId, Intent intent, int maxPixelDimension,
@@ -94,7 +107,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
 
         protected override void ProcessMvxIntentResult(MvxIntentResultEventArgs result)
         {
-            MvxTrace.Trace("ProcessMvxIntentResult started...");
+            log.Trace("ProcessMvxIntentResult started...");
 
             Uri uri;
 
@@ -108,7 +121,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                     break;
                 default:
                     // ignore this result - it's not for us
-                    MvxTrace.Trace("Unexpected request received from MvxIntentResult - request was {0}",
+                    log.Trace("Unexpected request received from MvxIntentResult - request was {0}",
                                     result.RequestCode);
                     return;
             }
@@ -121,7 +134,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
         {
             if (currentRequestParameters == null)
             {
-                MvxTrace.Error("Internal error - response received but _currentRequestParameters is null");
+                log.Error("Internal error - response received but _currentRequestParameters is null");
                 return; // we have not handled this - so we return null
             }
 
@@ -131,29 +144,29 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                 // Note for furture maintenance - it might be better to use var outputFileUri = data.GetParcelableArrayExtra("outputFileuri") here?
                 if (result.ResultCode != Result.Ok)
                 {
-                    MvxTrace.Trace("Non-OK result received from MvxIntentResult - {0} - request was {1}",
+                    log.Trace("Non-OK result received from MvxIntentResult - {0} - request was {1}",
                                     result.ResultCode, result.RequestCode);
                     return;
                 }
 
                 if (string.IsNullOrEmpty(uri?.Path))
                 {
-                    MvxTrace.Trace("Empty uri or file path received for MvxIntentResult");
+                    log.Trace("Empty uri or file path received for MvxIntentResult");
                     return;
                 }
 
-                MvxTrace.Trace("Loading InMemoryBitmap started...");
+                log.Trace("Loading InMemoryBitmap started...");
                 var memoryStream = LoadInMemoryBitmap(uri);
                 if (memoryStream == null)
                 {
-                    MvxTrace.Trace("Loading InMemoryBitmap failed...");
+                    log.Trace("Loading InMemoryBitmap failed...");
                     return;
                 }
-                MvxTrace.Trace("Loading InMemoryBitmap complete...");
+                log.Trace("Loading InMemoryBitmap complete...");
                 responseSent = true;
-                MvxTrace.Trace("Sending pictureAvailable...");
+                log.Trace("Sending pictureAvailable...");
                 currentRequestParameters.PictureAvailable(memoryStream);
-                MvxTrace.Trace("pictureAvailable completed...");
+                log.Trace("pictureAvailable completed...");
             }
             finally
             {
@@ -180,7 +193,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
 
         private Bitmap LoadScaledBitmap(Uri uri)
         {
-            var contentResolver = Mvx.Resolve<IMvxAndroidGlobals>().ApplicationContext.ContentResolver;
+            var contentResolver = androidGlobals.ApplicationContext.ContentResolver;
             var maxDimensionSize = GetMaximumDimension(contentResolver, uri);
 
             Bitmap sampled;
@@ -190,7 +203,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                 if (sampleSize < 1)
                 {
                     // this shouldn't happen, but if it does... then trace the error and set sampleSize to 1
-                    MvxTrace.Trace(
+                    log.Trace(
                         "Warning - sampleSize of {0} was requested - how did this happen - based on requested {1} and returned image size {2}",
                         sampleSize,
                         currentRequestParameters.MaxPixelDimension,
@@ -216,7 +229,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             }
             catch (Exception e)
             {
-                Mvx.Trace($"ExifRotateBitmap exception {e.ToLongString()}");
+                log.Trace($"ExifRotateBitmap exception {e.ToLongString()}");
                 return sampled;
             }
         }
@@ -260,7 +273,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                     //API 24+
                     using (var exif = new ExifInterface(stream))
                     {
-                        var rotation = exif.GetAttributeInt(ExifInterface.TagOrientation, (int)Android.Media.Orientation.Normal);
+                        var rotation = exif.GetAttributeInt(ExifInterface.TagOrientation, (int)Orientation.Normal);
                         rotationInDegrees = ExifToDegrees(rotation);
                     }
                 }
@@ -271,13 +284,13 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                 if (realPath != null)
                 {
                     var exif = new ExifInterface(realPath);
-                    var rotation = exif.GetAttributeInt(ExifInterface.TagOrientation, (int)Android.Media.Orientation.Normal);
+                    var rotation = exif.GetAttributeInt(ExifInterface.TagOrientation, (int)Orientation.Normal);
                     rotationInDegrees = ExifToDegrees(rotation);
                 }
                 else
                 {
                     rotationInDegrees = 0;
-                    Mvx.Trace("ExifRotateBitmap can not load exif data from external image on api < 24");
+                    log.Trace("ExifRotateBitmap can not load exif data from external image on api < 24");
                 }
             }
 
@@ -308,11 +321,11 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
         {
             switch (exifOrientation)
             {
-                case (int)Android.Media.Orientation.Rotate90:
+                case (int)Orientation.Rotate90:
                     return 90;
-                case (int)Android.Media.Orientation.Rotate180:
+                case (int)Orientation.Rotate180:
                     return 180;
-                case (int)Android.Media.Orientation.Rotate270:
+                case (int)Orientation.Rotate270:
                     return 270;
             }
 

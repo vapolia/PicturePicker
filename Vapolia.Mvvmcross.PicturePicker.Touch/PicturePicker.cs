@@ -7,6 +7,7 @@ using MvvmCross.Platform;
 using MvvmCross.Platform.Exceptions;
 using MvvmCross.Platform.iOS.Platform;
 using MvvmCross.Platform.iOS.Views;
+using MvvmCross.Platform.Logging;
 using UIKit;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Touch
@@ -14,19 +15,21 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
     [Preserve(AllMembers = true)]
     public sealed class PicturePicker : MvxIosTask, IPicturePicker, IDisposable
     {
+        private readonly IMvxLog log;
         private readonly IMvxIosModalHost modalHost;
-        private readonly FileService fileStore = FileService.Instance;
         private readonly UIImagePickerController picker;
         // ReSharper disable InconsistentNaming
         private int _maxPixelDimension;
         private int _percentQuality;
+        private string _filePath;
         // ReSharper restore InconsistentNaming
         private Action<Task<bool>> savingTaskAction;
-        private TaskCompletionSource<string> tcs;
+        private TaskCompletionSource<bool> tcs;
 
-        public PicturePicker()
+        public PicturePicker(IMvxLog logger, IMvxIosModalHost modalHost)
         {
-            modalHost = Mvx.Resolve<IMvxIosModalHost>();
+            log = logger;
+            this.modalHost = modalHost;
 
             picker = new UIImagePickerController();
 
@@ -56,21 +59,21 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                         || UIImagePickerController.IsCameraDeviceAvailable(UIImagePickerControllerCameraDevice.Front)
                         || UIImagePickerController.IsCameraDeviceAvailable(UIImagePickerControllerCameraDevice.Rear);
 
-        public Task<string> ChoosePictureFromLibrary(Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 80)
+        public Task<bool> ChoosePictureFromLibrary(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 80)
         {
             savingTaskAction = saving;
             picker.SourceType = UIImagePickerControllerSourceType.PhotoLibrary;
             picker.AllowsEditing = true;
             picker.AllowsImageEditing = true;
-            return ChoosePictureCommon(maxPixelDimension, percentQuality);
+            return ChoosePictureCommon(filePath, maxPixelDimension, percentQuality);
         }
 
-        public Task<string> TakePicture(Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 0, bool useFrontCamera=false)
+        public Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 0, bool useFrontCamera=false)
         {
             if (!HasCamera)
             {
-                Mvx.Warning("Source type Camera not available on this device.");
-                return Task.FromResult((string)null);
+                log.Warn("Source type Camera not available on this device.");
+                return Task.FromResult(false);
             }
 
             var camera = useFrontCamera ? UIImagePickerControllerCameraDevice.Front : UIImagePickerControllerCameraDevice.Rear;
@@ -79,8 +82,8 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 camera = useFrontCamera ? UIImagePickerControllerCameraDevice.Rear : UIImagePickerControllerCameraDevice.Front;
                 if (!UIImagePickerController.IsCameraDeviceAvailable(camera))
                 {
-                    Mvx.Warning("No camera available on this device.");
-                    return Task.FromResult((string)null);
+                    log.Warn("No camera available on this device.");
+                    return Task.FromResult(false);
                 }
             }
 
@@ -90,25 +93,27 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             picker.CameraDevice = useFrontCamera ? UIImagePickerControllerCameraDevice.Front : UIImagePickerControllerCameraDevice.Rear;
             picker.AllowsEditing = true;
             picker.AllowsImageEditing = true;
-            return ChoosePictureCommon(maxPixelDimension, percentQuality);
+            return ChoosePictureCommon(filePath, maxPixelDimension, percentQuality);
         }
 
-        private Task<string> ChoosePictureCommon(int maxPixelDimension, int percentQuality)
+        private Task<bool> ChoosePictureCommon(string filePath, int maxPixelDimension, int percentQuality)
         {
             if (tcs != null)
             {
-                Mvx.Error("PicturePicker: A call is already in progress");
-                return Task.FromResult((string)null);
+                log.Error("PicturePicker: A call is already in progress");
+                return Task.FromResult(false);
             }
 
-            tcs = new TaskCompletionSource<string>();
+            tcs = new TaskCompletionSource<bool>();
 
             _maxPixelDimension = maxPixelDimension;
             _percentQuality = percentQuality;
+            _filePath = filePath;
+
             if (!modalHost.PresentModalViewController(picker, true))
             {
-                Mvx.Warning("PicturePicker: PresentModalViewController failed");
-                tcs.SetResult(null);
+                log.Warn("PicturePicker: PresentModalViewController failed");
+                tcs.SetResult(false);
             }
 
             return tcs.Task;
@@ -136,7 +141,8 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                     {
                         using (var stream = data.AsStream())
                         {
-                            imageFile = await ImageHelper.SaveImage(fileStore, stream, CancellationToken.None).ConfigureAwait(false);
+                            await ImageHelper.SaveImage(_filePath, stream, CancellationToken.None).ConfigureAwait(false);
+                            imageFile = _filePath;
                         }
                     }
                     image.Dispose();
@@ -145,7 +151,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 }
                 catch (Exception e)
                 {
-                    Mvx.Error("PicturePicker error in HandleImagePick: {0}", e.ToLongString());
+                    log.Error($"PicturePicker error in HandleImagePick: {e.ToLongString()}");
                     tcsSaving.SetResult(false);
                 }
             }
@@ -161,7 +167,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
 
 
                     if (imageFile != null)
-                        tcs.SetResult(imageFile);
+                        tcs.SetResult(true);
                     else
                         tcs.SetCanceled();
                     tcs = null;

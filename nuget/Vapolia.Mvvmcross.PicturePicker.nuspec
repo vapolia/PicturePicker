@@ -13,12 +13,12 @@
     <tags>picture picker xamarin ios android</tags>
     <dependencies>
       <group targetFramework="MonoAndroid10">
-        <dependency id="MvvmCross.Platform" version="5.2.1"  />
+        <dependency id="MvvmCross.Platform" version="5.6.3"  />
       </group>
 
       <group targetFramework="xamarinios10">
-        <dependency id="MvvmCross.Core" version="5.2.1" />
-        <dependency id="MvvmCross.Platform" version="5.2.1" />
+        <dependency id="MvvmCross.Core" version="5.6.3" />
+        <dependency id="MvvmCross.Platform" version="5.6.3" />
       </group>
 
       <group targetFramework="netstandard2.0">
