@@ -16,6 +16,7 @@ using MvvmCross.Platform.Exceptions;
 using MvvmCross.Platform.Platform;
 using Uri = Android.Net.Uri;
 using Android.Runtime;
+using MvvmCross.Platform;
 using MvvmCross.Platform.Logging;
 using Stream = System.IO.Stream;
 
@@ -28,6 +29,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
         private readonly IMvxAndroidGlobals androidGlobals;
         private Uri cachedUriLocation;
         private RequestParameters currentRequestParameters;
+        private bool shouldSaveToGallery;
 
         public PicturePicker(IMvxLog logger, IMvxAndroidGlobals androidGlobals)
         {
@@ -37,6 +39,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
 
         public Task<bool> ChoosePictureFromLibrary(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 80)
         {
+            shouldSaveToGallery = false;
             var intent = new Intent(Intent.ActionGetContent);
             intent.SetType("image/*");
             var tcs = new TaskCompletionSource<bool>();
@@ -51,8 +54,9 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
 
         public bool HasCamera => Application.Context.PackageManager.HasSystemFeature(PackageManager.FeatureCamera);
 
-        public Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 0, bool useFrontCamera = false)
+        public Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 0, bool useFrontCamera = false, bool saveToGallery = false)
         {
+            shouldSaveToGallery = saveToGallery;
             var intent = new Intent(MediaStore.ActionImageCapture);
 
             cachedUriLocation = GetNewImageUri();
@@ -144,8 +148,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                 // Note for furture maintenance - it might be better to use var outputFileUri = data.GetParcelableArrayExtra("outputFileuri") here?
                 if (result.ResultCode != Result.Ok)
                 {
-                    log.Trace("Non-OK result received from MvxIntentResult - {0} - request was {1}",
-                                    result.ResultCode, result.RequestCode);
+                    log.Trace("Non-OK result received from MvxIntentResult - {0} - request was {1}", result.ResultCode, result.RequestCode);
                     return;
                 }
 
@@ -183,6 +186,12 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             var bitmap = LoadScaledBitmap(uri);
             if (bitmap == null)
                 return null;
+
+            if (shouldSaveToGallery)
+            {
+                MediaStore.Images.Media.InsertImage(androidGlobals.ApplicationContext.ContentResolver, bitmap, $"{DateTime.Now.ToString("O").Replace(':','-').Replace('.','-').Replace('T',' ')}", "");
+            }
+
             using (bitmap)
             {
                 bitmap.Compress(Bitmap.CompressFormat.Jpeg, currentRequestParameters.PercentQuality, memoryStream);

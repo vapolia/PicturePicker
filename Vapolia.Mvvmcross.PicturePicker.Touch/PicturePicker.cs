@@ -25,6 +25,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
         // ReSharper restore InconsistentNaming
         private Action<Task<bool>> savingTaskAction;
         private TaskCompletionSource<bool> tcs;
+        private bool shouldSaveToGallery;
 
         public PicturePicker(IMvxLog logger, IMvxIosModalHost modalHost)
         {
@@ -65,10 +66,11 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             picker.SourceType = UIImagePickerControllerSourceType.PhotoLibrary;
             picker.AllowsEditing = true;
             picker.AllowsImageEditing = true;
+            shouldSaveToGallery = false;
             return ChoosePictureCommon(filePath, maxPixelDimension, percentQuality);
         }
 
-        public Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 0, bool useFrontCamera=false)
+        public Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 0, bool useFrontCamera=false, bool saveToGallery=false)
         {
             if (!HasCamera)
             {
@@ -88,6 +90,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             }
 
             savingTaskAction = saving;
+            shouldSaveToGallery = saveToGallery;
             picker.SourceType = UIImagePickerControllerSourceType.Camera;
             picker.CameraCaptureMode = UIImagePickerControllerCameraCaptureMode.Photo;
             picker.CameraDevice = useFrontCamera ? UIImagePickerControllerCameraDevice.Front : UIImagePickerControllerCameraDevice.Rear;
@@ -126,6 +129,13 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             {
                 var tcsSaving = new TaskCompletionSource<bool>();
                 savingTaskAction?.Invoke(tcsSaving.Task);
+
+                if (shouldSaveToGallery)
+                {
+                    var tcs2 = new TaskCompletionSource<bool>();
+                    image.SaveToPhotosAlbum((uiImage, error) => tcs2.TrySetResult(error == null));
+                    await tcs2.Task;
+                }
 
                 try
                 {

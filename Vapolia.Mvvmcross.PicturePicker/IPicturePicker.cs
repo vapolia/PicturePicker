@@ -12,8 +12,9 @@ namespace Vapolia.Mvvmcross.PicturePicker
 
         /// <summary>
         /// Returns null if cancelled
+        /// saveToGallery can fails silently
         /// </summary>
-        Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension=0, int percentQuality=0, bool useFrontCamera=false);
+        Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension=0, int percentQuality=0, bool useFrontCamera=false, bool saveToGallery=false);
 
         bool HasCamera { get; }
     }
