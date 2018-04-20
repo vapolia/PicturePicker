@@ -3,6 +3,7 @@ using System.Linq;
 using MvvmCross.Platform;
 using MvvmCross.Platform.Plugins;
 using Android.Runtime;
+using Vapolia.Mvvmcross.PicturePicker.Lib;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Droid
 {
@@ -12,6 +13,8 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
         public void Load()
         {
             Mvx.RegisterType<IPicturePicker, PicturePicker>();
+            //Mvx.RegisterType<IExifReader, ExifBinaryReader>();
+            //Mvx.RegisterType<IJpegInfo, JpegInfo>();
         }
     }
 }

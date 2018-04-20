@@ -13,10 +13,9 @@ using MvvmCross.Platform.Droid;
 using MvvmCross.Platform.Droid.Platform;
 using MvvmCross.Platform.Droid.Views;
 using MvvmCross.Platform.Exceptions;
-using MvvmCross.Platform.Platform;
 using Uri = Android.Net.Uri;
 using Android.Runtime;
-using MvvmCross.Platform;
+using Android.Util;
 using MvvmCross.Platform.Logging;
 using Stream = System.IO.Stream;
 
@@ -37,13 +36,13 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             this.androidGlobals = androidGlobals;
         }
 
-        public Task<bool> ChoosePictureFromLibrary(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 80)
+        public Task<bool> ChoosePictureFromLibrary(string filePath, Action<Task<bool>> saving = null, int maxPixelWidth = 0, int maxPixelHeight = 0, int percentQuality = 80)
         {
             shouldSaveToGallery = false;
             var intent = new Intent(Intent.ActionGetContent);
             intent.SetType("image/*");
             var tcs = new TaskCompletionSource<bool>();
-            ChoosePictureCommon(MvxIntentRequestCode.PickFromFile, intent, maxPixelDimension, percentQuality,
+            ChoosePictureCommon(MvxIntentRequestCode.PickFromFile, intent, maxPixelWidth, maxPixelHeight, percentQuality,
                 async stream =>
                 {
                     await SaveImage(filePath, stream, CancellationToken.None);
@@ -54,7 +53,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
 
         public bool HasCamera => Application.Context.PackageManager.HasSystemFeature(PackageManager.FeatureCamera);
 
-        public Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 0, bool useFrontCamera = false, bool saveToGallery = false)
+        public Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelWidth = 0, int maxPixelHeight = 0, int percentQuality = 0, bool useFrontCamera = false, bool saveToGallery = false)
         {
             shouldSaveToGallery = saveToGallery;
             var intent = new Intent(MediaStore.ActionImageCapture);
@@ -71,7 +70,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             }
 
             var tcs = new TaskCompletionSource<bool>();
-            ChoosePictureCommon(MvxIntentRequestCode.PickFromCamera, intent, maxPixelDimension, percentQuality,
+            ChoosePictureCommon(MvxIntentRequestCode.PickFromCamera, intent, maxPixelWidth, maxPixelHeight, percentQuality,
                 async stream =>
                 {
                     await SaveImage(filePath, stream, CancellationToken.None);
@@ -99,13 +98,13 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             return androidGlobals.ApplicationContext.ContentResolver.Insert(MediaStore.Images.Media.ExternalContentUri, contentValues);
         }
 
-        public void ChoosePictureCommon(MvxIntentRequestCode pickId, Intent intent, int maxPixelDimension,
+        public void ChoosePictureCommon(MvxIntentRequestCode pickId, Intent intent, int maxPixelWidth, int maxPixelHeight,
                                         int percentQuality, Action<Stream> pictureAvailable, Action assumeCancelled)
         {
             if (currentRequestParameters != null)
                 throw new MvxException("Cannot request a second picture while the first request is still pending");
 
-            currentRequestParameters = new RequestParameters(maxPixelDimension, percentQuality, pictureAvailable, assumeCancelled);
+            currentRequestParameters = new RequestParameters(maxPixelWidth, maxPixelHeight, percentQuality, pictureAvailable, assumeCancelled);
             StartActivityForResult((int)pickId, intent);
         }
 
@@ -203,34 +202,23 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
         private Bitmap LoadScaledBitmap(Uri uri)
         {
             var contentResolver = androidGlobals.ApplicationContext.ContentResolver;
-            var maxDimensionSize = GetMaximumDimension(contentResolver, uri);
+            var maxSize = GetMaximumDimension(contentResolver, uri);
 
             Bitmap sampled;
-            if (currentRequestParameters.MaxPixelDimension != 0)
+            if (currentRequestParameters.MaxPixelWidth != 0 || currentRequestParameters.MaxPixelHeight != 0)
             {
-                var sampleSize = (int)Math.Ceiling(maxDimensionSize / (double)currentRequestParameters.MaxPixelDimension);
+                int sampleSize=0; // = Math.Max(currentRequestParameters.MaxPixelWidth, currentRequestParameters.MaxPixelHeight);
+                if (currentRequestParameters.MaxPixelWidth != 0)
+                    sampleSize = (int)Math.Ceiling(maxSize.Width / (double)currentRequestParameters.MaxPixelWidth);
+                if (currentRequestParameters.MaxPixelHeight != 0)
+                    sampleSize = Math.Max(sampleSize, (int)Math.Ceiling(maxSize.Height / (double)currentRequestParameters.MaxPixelHeight));
+
                 if (sampleSize < 1)
-                {
-                    // this shouldn't happen, but if it does... then trace the error and set sampleSize to 1
-                    log.Trace(
-                        "Warning - sampleSize of {0} was requested - how did this happen - based on requested {1} and returned image size {2}",
-                        sampleSize,
-                        currentRequestParameters.MaxPixelDimension,
-                        maxDimensionSize);
-                    // following from https://github.com/MvvmCross/MvvmCross/issues/565 we return null in this case
-                    // - it suggests that Android has returned a corrupt image uri
-                    return null;
-                }
+                    sampleSize = 1;
                 sampled = LoadResampledBitmap(contentResolver, uri, sampleSize);
             }
             else
-            {
-                using (var inputStream = contentResolver.OpenInputStream(uri))
-                {
-                    var optionsDecode = new BitmapFactory.Options();
-                    sampled = BitmapFactory.DecodeStream(inputStream, null, optionsDecode);
-                }
-            }
+                sampled = LoadResampledBitmap(contentResolver, uri, 1);
 
             try
             {
@@ -253,7 +241,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             }
         }
 
-        private static int GetMaximumDimension(ContentResolver contentResolver, Uri uri)
+        private static Size GetMaximumDimension(ContentResolver contentResolver, Uri uri)
         {
             using (var inputStream = contentResolver.OpenInputStream(uri))
             {
@@ -263,8 +251,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                 };
                 // ReSharper disable once UnusedVariable
                 var metadataResult = BitmapFactory.DecodeStream(inputStream, null, optionsJustBounds);
-                var maxDimensionSize = Math.Max(optionsJustBounds.OutWidth, optionsJustBounds.OutHeight);
-                return maxDimensionSize;
+                return new Size(optionsJustBounds.OutWidth, optionsJustBounds.OutHeight);
             }
         }
 
@@ -345,18 +332,19 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
 
         private class RequestParameters
         {
-            public RequestParameters(int maxPixelDimension, int percentQuality, Action<Stream> pictureAvailable,
-                                        Action assumeCancelled)
+            public RequestParameters(int maxPixelWidth, int maxPixelHeight, int percentQuality, Action<Stream> pictureAvailable, Action assumeCancelled)
             {
+                MaxPixelWidth = maxPixelWidth;
+                MaxPixelHeight = maxPixelHeight;
                 PercentQuality = percentQuality;
-                MaxPixelDimension = maxPixelDimension;
                 AssumeCancelled = assumeCancelled;
                 PictureAvailable = pictureAvailable;
             }
 
             public Action<Stream> PictureAvailable { get; }
             public Action AssumeCancelled { get; }
-            public int MaxPixelDimension { get; }
+            public int MaxPixelWidth { get; }
+            public int MaxPixelHeight { get; }
             public int PercentQuality { get; }
         }
 

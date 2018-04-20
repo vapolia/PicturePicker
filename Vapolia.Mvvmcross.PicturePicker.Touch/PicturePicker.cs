@@ -19,7 +19,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
         private readonly IMvxIosModalHost modalHost;
         private readonly UIImagePickerController picker;
         // ReSharper disable InconsistentNaming
-        private int _maxPixelDimension;
+        private int _maxPixelWidth, _maxPixelHeight;
         private int _percentQuality;
         private string _filePath;
         // ReSharper restore InconsistentNaming
@@ -60,17 +60,17 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                         || UIImagePickerController.IsCameraDeviceAvailable(UIImagePickerControllerCameraDevice.Front)
                         || UIImagePickerController.IsCameraDeviceAvailable(UIImagePickerControllerCameraDevice.Rear);
 
-        public Task<bool> ChoosePictureFromLibrary(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 80)
+        public Task<bool> ChoosePictureFromLibrary(string filePath, Action<Task<bool>> saving = null, int maxPixelWidth=0, int maxPixelHeight=0, int percentQuality = 80)
         {
             savingTaskAction = saving;
             picker.SourceType = UIImagePickerControllerSourceType.PhotoLibrary;
             picker.AllowsEditing = true;
             picker.AllowsImageEditing = true;
             shouldSaveToGallery = false;
-            return ChoosePictureCommon(filePath, maxPixelDimension, percentQuality);
+            return ChoosePictureCommon(filePath, maxPixelWidth, maxPixelHeight, percentQuality);
         }
 
-        public Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelDimension = 0, int percentQuality = 0, bool useFrontCamera=false, bool saveToGallery=false)
+        public Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelWidth=0, int maxPixelHeight=0, int percentQuality = 0, bool useFrontCamera=false, bool saveToGallery=false)
         {
             if (!HasCamera)
             {
@@ -96,10 +96,10 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             picker.CameraDevice = useFrontCamera ? UIImagePickerControllerCameraDevice.Front : UIImagePickerControllerCameraDevice.Rear;
             picker.AllowsEditing = true;
             picker.AllowsImageEditing = true;
-            return ChoosePictureCommon(filePath, maxPixelDimension, percentQuality);
+            return ChoosePictureCommon(filePath, maxPixelWidth, maxPixelHeight, percentQuality);
         }
 
-        private Task<bool> ChoosePictureCommon(string filePath, int maxPixelDimension, int percentQuality)
+        private Task<bool> ChoosePictureCommon(string filePath, int maxPixelWidth, int maxPixelHeight, int percentQuality)
         {
             if (tcs != null)
             {
@@ -109,7 +109,8 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
 
             tcs = new TaskCompletionSource<bool>();
 
-            _maxPixelDimension = maxPixelDimension;
+            _maxPixelWidth = maxPixelWidth;
+            _maxPixelHeight = maxPixelHeight;
             _percentQuality = percentQuality;
             _filePath = filePath;
 
@@ -140,10 +141,10 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 try
                 {
                     // resize the image
-                    if (_maxPixelDimension > 0)
+                    if (_maxPixelWidth > 0 || _maxPixelHeight > 0)
                     {
                         var oldImage = image;
-                        image = image.ImageToFitSize(new CGSize(_maxPixelDimension, _maxPixelDimension));
+                        image = image.ImageToFitSize(new CGSize(_maxPixelWidth, _maxPixelHeight));
                         oldImage.Dispose();
                     }
 

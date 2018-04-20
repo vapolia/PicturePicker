@@ -13,21 +13,21 @@
     <tags>picture picker xamarin ios android</tags>
     <dependencies>
       <group targetFramework="MonoAndroid10">
-        <dependency id="MvvmCross.Platform" version="5.6.3"  />
+        <dependency id="MvvmCross.Platform" version="5.7.0"  />
       </group>
 
       <group targetFramework="xamarinios10">
-        <dependency id="MvvmCross.Core" version="5.6.3" />
-        <dependency id="MvvmCross.Platform" version="5.6.3" />
+        <dependency id="MvvmCross.Core" version="5.7.0" />
+        <dependency id="MvvmCross.Platform" version="5.7.0" />
       </group>
 
       <group targetFramework="netstandard2.0">
-        <!--<dependency id="MvvmCross.Platform" version="5.2.1"  />-->
+        <!--<dependency id="MvvmCross.Platform" version="5.7.0"  />-->
       </group>
     </dependencies>
   </metadata>
   <files>
-    <!-- PCL -->
+    <!-- netstandard -->
     <file src="..\Vapolia.Mvvmcross.PicturePicker\bin\Release\netstandard2.0\PicturePicker.dll" target="lib\netstandard2.0\PicturePicker.dll" />
 
     <!-- droid -->

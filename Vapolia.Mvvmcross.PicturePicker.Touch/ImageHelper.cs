@@ -12,8 +12,9 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
         public static UIImage FromFile(string filename, CGSize fitSize)
         {
             var imageFile = UIImage.FromFile(filename);
-
-            return imageFile.ImageToFitSize(fitSize);
+            var image = imageFile.ImageToFitSize(fitSize);
+            imageFile.Dispose();
+            return image;
         }
 
         public static UIImage ImageToFitSize(this UIImage image, CGSize fitSize)
