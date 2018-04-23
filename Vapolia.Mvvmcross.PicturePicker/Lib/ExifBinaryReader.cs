@@ -30,8 +30,6 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
         /// </summary>
         private bool _leaveOpen;
 
-        private bool _isInitilazed;
-
         private static readonly Regex _nullDateTimeMatcher = new Regex(@"^[\s0]{4}[:\s][\s0]{2}[:\s][\s0]{5}[:\s][\s0]{2}[:\s][\s0]{2}$");
 
         /// <summary>
@@ -66,16 +64,29 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
         /// </summary>
         private long _tiffHeaderStart;
 
-        /// <summary>
-        /// The file path of the jpeg 
-        /// </summary>
-        private string _sourceFilePath;
-
         public ExifBinaryReader(string filePath)
         {
-            _sourceFilePath = filePath;
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentNullException(nameof(filePath));
+
+            ReadJpeg(File.OpenRead(filePath), false, true);
         }
 
+        //public ExifBinaryReader(byte[] jpegData)
+        //{
+        //    if (jpegData == null)
+        //        throw new ArgumentNullException(nameof(jpegData));
+
+        //    ReadJpeg(new MemoryStream(jpegData,false), false, true);
+        //}
+
+        public ExifBinaryReader(Stream jpegData)
+        {
+            if (jpegData == null || !jpegData.CanRead)
+                throw new ArgumentNullException(nameof(jpegData));
+
+            ReadJpeg(jpegData, true, false);
+        }
 
         /// <summary>
         /// Read the file and create Tag Index
@@ -96,8 +107,13 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
                 if (stream == null)
                     throw new ArgumentNullException(nameof(stream));
 
+                if (!stream.CanRead)
+                    throw new MediaExifException("ExifLib requires a readable stream");
+
                 if (!stream.CanSeek)
                     throw new MediaExifException("ExifLib requires a seekable stream");
+
+                _reader = new BinaryReader(stream);
 
                 // JPEG encoding uses big endian (i.e. Motorola) byte aligns. The TIFF encoding
                 // found later in the document will specify the byte aligns used for the rest of the document.
@@ -130,9 +146,8 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
                 {
                     throw new MediaExifException("Error indexing EXIF tags", ex);
                 }
-                _isInitilazed = true;
             }
-            catch
+            catch(Exception e)
             {
                 // Cleanup. Note that the stream is not closed unless it was created internally
                 try
@@ -154,8 +169,9 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
                         }
                     }
                 }
-                catch
+                catch(Exception ee)
                 {
+                    //Already inside an error
                 }
 
                 throw;
@@ -396,9 +412,9 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
         /// <param name="elementLengthBytes"></param>
         /// <param name="converter"></param>
         /// <returns></returns>
-        private static Array GetArray<T>(byte[] data, int elementLengthBytes, ConverterMethod<T> converter)
+        private static T[] GetArray<T>(byte[] data, int elementLengthBytes, ConverterMethod<T> converter)
         {
-            Array convertedData = new T[data.Length / elementLengthBytes];
+            var convertedData = new T[data.Length / elementLengthBytes];
 
             var buffer = new byte[elementLengthBytes];
 
@@ -418,10 +434,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
         /// <summary>
         /// A delegate used to invoke any of the data conversion methods
         /// </summary>
-        /// <param name="data"></param>
-        /// <returns></returns>
-        /// <remarks>Although this could be defined as covariant, it wouldn't work on Windows Phone 7</remarks>
-        private delegate T ConverterMethod<T>(byte[] data);
+        private delegate T ConverterMethod<out T>(byte[] data);
 
         #endregion
 
@@ -498,12 +511,11 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
             _ifd0PrimaryCatalogue = CatalogueIfd();
 
             // The address to the IFD1 (the thumbnail IFD) is located immediately after the main IFD
-            uint ifd1Offset = ReadUint();
+            var ifd1Offset = ReadUint();
 
             // There's more data stored in the EXIF subifd, the offset to which is found in tag 0x8769.
             // As with all TIFF offsets, it will be relative to the first byte of the TIFF header.
-            uint offset;
-            if (GetTagValue(_ifd0PrimaryCatalogue, 0x8769, out offset))
+            if (GetTagValue(_ifd0PrimaryCatalogue, 0x8769, out uint offset))
             {
                 // Jump to the exif SubIFD
                 _stream.Position = offset + _tiffHeaderStart;
@@ -535,19 +547,13 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
 
         public bool TryGetTagValue<T>(ExifTags tag, out T result)
         {
-            return TryGetTagValue((ushort)tag, out result);
+            return TryGetTagValue<T>((ushort)tag, out result);
         }
 
         public bool TryGetTagValue<T>(ushort tagId, out T result)
         {
             try
             {
-                if (!_isInitilazed)
-                {
-                    if(!string.IsNullOrEmpty(_sourceFilePath))
-                        ReadJpeg(File.OpenRead(_sourceFilePath), true, true);
-                }
-
                 // Select the correct catalogue based on the tag value. Note that the thumbnail catalogue (ifd1)
                 // is only used for thumbnails, never for tag retrieval
 
@@ -559,18 +565,19 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
                 else
                     catalogue = _ifdGPSCatalogue;
 
-                return GetTagValue(catalogue, tagId, out result);
+                return GetTagValue<T>(catalogue, tagId, out result);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine("Error parsing " + (ExifTags)tagId + " : " + ex.ToString());
+                Debug.WriteLine($"Error parsing {(ExifTags) tagId} : {ex}");
                 result = default(T);
                 return false;
             }
         }
 
         /// <summary>
-        /// Retrieves an Exif value with the requested tag ID
+        /// Retrieves an Exif value with the requested tag ID.
+        /// result is an object, as the value can be an array of T, or a single value T.
         /// </summary>
         private bool GetTagValue<T>(Dictionary<ushort, long> tagDictionary, ushort tagId, out T result)
         {
@@ -604,7 +611,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
                     return true;
                 case 2:
                     // ascii string
-                    string str = Encoding.UTF8.GetString(tagData, 0, tagData.Length);
+                    var str = Encoding.UTF8.GetString(tagData, 0, tagData.Length);
 
                     // There may be a null character within the string
                     int nullCharIndex = str.IndexOf('\0');
@@ -824,8 +831,6 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
         /// <returns></returns>
         public byte[] GetJpegThumbnailBytes()
         {
-            //if(!_isInitilazed)
-            //    throw new InvalidOperationException("ExifBinaryReader as not been initialized c" )
             if (_ifd1Catalogue == null)
                 return null;
 

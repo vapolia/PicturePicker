@@ -3,6 +3,7 @@ using Foundation;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using MvvmCross.Platform.iOS;
 using Vapolia.Mvvmcross.PicturePicker.Lib;
 
 
@@ -40,7 +41,9 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch.Lib
             _exifCache.Add(ExifTags.GPSDestBearingRef, (gpsdico[ImageIO.CGImageProperties.GPSDestBearingRef] != null) ? ((string)(NSString)gpsdico[ImageIO.CGImageProperties.GPSDestBearingRef]) : null);
             _exifCache.Add(ExifTags.GPSSpeed, (gpsdico[ImageIO.CGImageProperties.GPSSpeed] != null) ? (double?)(NSNumber)gpsdico[ImageIO.CGImageProperties.GPSSpeed] : null);
             _exifCache.Add(ExifTags.GPSSpeedRef, (gpsdico[ImageIO.CGImageProperties.GPSSpeedRef] != null) ? ((string)(NSString)gpsdico[ImageIO.CGImageProperties.GPSSpeedRef]) : null);
-
+            _exifCache.Add(ExifTags.GPSDateStamp, (gpsdico[ImageIO.CGImageProperties.GPSDateStamp] != null) ? ((string)(NSString)gpsdico[ImageIO.CGImageProperties.GPSDateStamp]) : null);
+            //TODO: verify how to store 3 rationale
+            _exifCache.Add(ExifTags.GPSTimeStamp, (gpsdico[ImageIO.CGImageProperties.GPSTimeStamp] != null) ? ((string)(NSString)gpsdico[ImageIO.CGImageProperties.GPSTimeStamp]) : null);
         }
 
         protected void SetGpsData(CLLocation loc)
@@ -56,6 +59,10 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch.Lib
             _exifCache.Add(ExifTags.GPSSpeed, loc.Speed < 0 ? (double?)null : loc.Speed); //meter per sec
             //_exifCache.Add(ExifTags.GPSSpeedRef, (gpsdico[ImageIO.CGImageProperties.GPSSpeedRef] != null) ? ((string)gpsdico[ImageIO.CGImageProperties.GPSSpeedRef]) : null);
 
+            var timestamp = loc.Timestamp.ToDateTimeUtc();
+            _exifCache.Add(ExifTags.GPSDateStamp, timestamp.ToString("yyyy:MM:dd"));
+            //TODO: verify how to store 3 rationale
+            //_exifCache.Add(ExifTags.GPSTimeStamp, timestamp.TimeOfDay.TotalSeconds);
         }
 
         /// <summary>
@@ -169,7 +176,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch.Lib
             }
 
             //For image that dont have any metadata
-            result = default(T);
+            result = default;
             return false;
         }
 
@@ -210,10 +217,10 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch.Lib
                 return null;
 
             if (ns is NSString s)
-                return (string)s;
+                return (string) s;
 
             if (ns is NSDate nsDate)
-                return (DateTime)nsDate;
+                return (DateTime) nsDate;
 
             if (ns is NSDecimalNumber dec)
                 return (decimal) dec.NSDecimalValue;
@@ -227,7 +234,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch.Lib
                     case TypeCode.Boolean:
                         return x.BoolValue;
                     case TypeCode.Char:
-                        return (char)x.ByteValue;
+                        return (char) x.ByteValue;
                     case TypeCode.SByte:
                         return x.SByteValue;
                     case TypeCode.Byte:
@@ -246,7 +253,9 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch.Lib
                         return x.UInt64Value;
                     case TypeCode.Single:
                         return x.FloatValue;
+
                     case TypeCode.Double:
+                    default:
                         return x.DoubleValue;
                 }
             }
@@ -266,9 +275,35 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch.Lib
                     return v.PointFValue;
             }
 
+            if (ns is NSDictionary dictionary)
+                return ToDic(dictionary);
+
+            if (ns is NSArray array)
+            {
+                var n = (int) array.Count;
+                var list = new object[n];
+                for (var i = 0; i < n; i++)
+                    list[i] = array.GetItem<NSObject>((nuint) i).ToObject<object>();
+                return list;
+            }
+
+            if (ns is NSData data)
+                return data.ToArray();
+
+#if DEBUG
             throw new NotSupportedException($"Don't know how to convert NSObject to {targetType}");
-            //return ns;
+#else
+            return ns;
+#endif
+        }
+
+        public static Dictionary<object,object> ToDic(this NSDictionary ns)
+        {
+            var n = (int) ns.Count;
+            var dic = new Dictionary<object, object>(n);
+            for (var i = 0; i < n; i++)
+                dic.Add(ns.Keys[i].ToObject<object>(), ns.Values[i].ToObject<object>());
+            return dic;
         }
     }
-
 }

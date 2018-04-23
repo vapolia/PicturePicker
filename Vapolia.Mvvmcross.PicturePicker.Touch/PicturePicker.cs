@@ -1,19 +1,25 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Threading;
 using CoreGraphics;
 using System.Threading.Tasks;
 using Foundation;
-using MvvmCross.Platform;
+using ImageIO;
+using MobileCoreServices;
 using MvvmCross.Platform.Exceptions;
-using MvvmCross.Platform.iOS.Platform;
 using MvvmCross.Platform.iOS.Views;
 using MvvmCross.Platform.Logging;
+using Photos;
 using UIKit;
+using Vapolia.Mvvmcross.PicturePicker;
+using Vapolia.Mvvmcross.PicturePicker.Touch.Lib;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Touch
 {
     [Preserve(AllMembers = true)]
-    public sealed class PicturePicker : MvxIosTask, IPicturePicker, IDisposable
+    public sealed class PicturePicker : IPicturePicker, IDisposable
     {
         private readonly IMvxLog log;
         private readonly IMvxIosModalHost modalHost;
@@ -34,16 +40,52 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
 
             picker = new UIImagePickerController();
 
-            picker.FinishedPickingMedia += (sender, args) =>
+            picker.FinishedPickingMedia += async (sender, args) =>
             {
                 var image = args.EditedImage ?? args.OriginalImage;
-                Task.Run(() => HandleImagePick(image));
+                var metadata = args.MediaMetadata;
+
+                if (metadata == null)
+                {
+                    var tcs0 = new TaskCompletionSource<NSDictionary>();
+
+                    //Requiert l'acces à la photo lib
+                    //var asset = args.PHAsset; //ios11+
+                    var asset = (PHAsset)PHAsset.FetchAssets( new [] { args.ReferenceUrl }, null).firstObject; //ios8-10
+                    PHImageManager.DefaultManager.RequestImageData(asset, new PHImageRequestOptions {NetworkAccessAllowed = false, DeliveryMode = PHImageRequestOptionsDeliveryMode.Opportunistic, ResizeMode = PHImageRequestOptionsResizeMode.None}, (nsData, uti, orientation, dictionary) =>
+                    {
+                        var imageSource = CGImageSource.FromData(nsData);
+                        var meta = imageSource.CopyProperties(new CGImageOptions(), 0);
+                        tcs0.TrySetResult(meta);
+                    });
+
+                    metadata = await tcs0.Task;
+                }
+
+#if DEBUG
+                if (metadata != null)
+                {
+                    var dic = metadata.ToDic();
+                    var j = 0;
+                }
+                else
+                {
+                    var data = image.AsJPEG((float)(_percentQuality / 100.0));
+                    using (var stream = data.AsStream())
+                    {
+                        var info = new JpegInfoService(stream);
+                        var lat = info.GpsLatitude;
+                        var lng = info.GpsLongitude;
+                    }
+                }
+#endif
+
+                await HandleImagePick(image, metadata);
             };
 
-            picker.FinishedPickingImage += (sender, args) =>
+            picker.FinishedPickingImage += async (sender, args) =>
             {
-                var image = args.Image;
-                Task.Run(() => HandleImagePick(image));
+                await HandleImagePick(args.Image, null);
             };
 
             picker.Canceled += async (sender, args) =>
@@ -123,7 +165,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             return tcs.Task;
         }
 
-        private async Task HandleImagePick(UIImage image)
+        private async Task HandleImagePick(UIImage image, NSDictionary metadata)
         {
             string imageFile = null;
             if (image != null)
@@ -142,21 +184,26 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 {
                     // resize the image
                     if (_maxPixelWidth > 0 || _maxPixelHeight > 0)
-                    {
-                        var oldImage = image;
                         image = image.ImageToFitSize(new CGSize(_maxPixelWidth, _maxPixelHeight));
-                        oldImage.Dispose();
-                    }
 
-                    using (var data = image.AsJPEG((float) (_percentQuality/100.0)))
-                    {
-                        using (var stream = data.AsStream())
-                        {
-                            await ImageHelper.SaveImage(_filePath, stream, CancellationToken.None).ConfigureAwait(false);
-                            imageFile = _filePath;
-                        }
-                    }
-                    image.Dispose();
+                    if (File.Exists(_filePath))
+                        File.Delete(_filePath);
+
+                    var imageDestination = CGImageDestination.Create(new CGDataConsumer(NSUrl.FromFilename(_filePath)), UTType.JPEG, 1, new CGImageDestinationOptions {LossyCompressionQuality = (float) (_percentQuality / 100.0)});
+                    imageDestination.AddImage(image.CGImage, metadata);
+                    if (!imageDestination.Close()) //Dispose is called by Close ...
+                        log.Error("PicturePicker: failed to copy photo on save to {0}", _filePath);
+                    else
+                        imageFile = _filePath;
+
+                    //using (var data = image.AsJPEG((float) (_percentQuality/100.0)))
+                    //{
+                    //    using (var stream = data.AsStream())
+                    //    {
+                    //        await ImageHelper.SaveImage(_filePath, stream, CancellationToken.None).ConfigureAwait(false);
+                    //        imageFile = _filePath;
+                    //    }
+                    //}
 
                     tcsSaving.SetResult(true);
                 }
@@ -164,6 +211,10 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 {
                     log.Error($"PicturePicker error in HandleImagePick: {e.ToLongString()}");
                     tcsSaving.SetResult(false);
+                }
+                finally
+                {
+                    image.Dispose();
                 }
             }
 

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Vapolia.Mvvmcross.PicturePicker.Lib;
 
 namespace Vapolia.Mvvmcross.PicturePicker
@@ -15,8 +16,23 @@ namespace Vapolia.Mvvmcross.PicturePicker
     {
         public JpegInfoService(string filePath)
         {
-            if (string.IsNullOrEmpty(filePath)) throw new ArgumentNullException(nameof(filePath));
+            if (string.IsNullOrEmpty(filePath)) 
+                throw new ArgumentNullException(nameof(filePath));
             Reader = new ExifBinaryReader(filePath);
+        }
+
+        //public JpegInfoService(byte[] jpegData)
+        //{
+        //    if (jpegData == null || jpegData.Length == 0)
+        //        throw new ArgumentNullException(nameof(jpegData));
+        //    Reader = new ExifBinaryReader(jpegData);
+        //}
+
+        public JpegInfoService(Stream jpegData)
+        {
+            if (jpegData == null || !jpegData.CanRead)
+                throw new ArgumentNullException(nameof(jpegData));
+            Reader = new ExifBinaryReader(jpegData);
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Lib
 {
@@ -26,7 +27,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
         public ExifTagColorSpace? ColorSpace => Reader.TryGetTagValue<ushort>(ExifTags.ColorSpace, out var result) ? (ExifTagColorSpace?)result : null;
 
         /// <summary>
-        /// The date and time when the image was stored as digital data.
+        /// The date and time when the image was stored as digital data. (local date)
         /// </summary>
         public string DateTimeDigitized => Reader.TryGetTagValue<string>(ExifTags.DateTimeDigitized, out var result) ? result : null;
 
@@ -51,13 +52,13 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
         public ExifTagResolutionUnit? ResolutionUnit => Reader.TryGetTagValue<ushort>(ExifTags.ResolutionUnit, out var result) ? (ExifTagResolutionUnit?) result : null;
 
         /// <summary>
-        /// Date at which the image was taken.
+        /// Date at which the image was taken. (local date)
         /// </summary>
         public string DateTime => Reader.TryGetTagValue<string>(ExifTags.DateTime, out var result) ? result : null;
 
 
         /// <summary>
-        /// Date at which the image was taken. Created by Lumia devices.
+        /// Date at which the image was taken. Created by Lumia devices. (local date)
         /// </summary>
         public string DateTimeOriginal => Reader.TryGetTagValue<string>(ExifTags.DateTimeOriginal, out var result) ? result : null;
 
@@ -152,24 +153,18 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
         /// <summary>
         /// Gps altitude in meters
         /// </summary>
-        public double? GpsAltitude
-        {
-            get => Reader.TryGetTagValue<double>(ExifTags.GPSAltitude, out var result) ? (double?)result: null;
-        }
+        public double? GpsAltitude => Reader.TryGetTagValue<double>(ExifTags.GPSAltitude, out var result) ? (double?)result: null;
+
         /// <summary>
         /// Indicates the altitude used as the reference altitude. If the reference is sea level and the altitude is above sea level, 0 is given. If the altitude is below sea level, a value of 1 is given and the altitude is indicated as an absolute value in the GSPAltitude tag. The reference unit is meters.
         /// </summary>
-        public ExifTagGpsAltitudeRef? GpsAltitudeRef
-        {
-            get => Reader.TryGetTagValue<ushort>(ExifTags.GPSAltitudeRef, out var result) ? (ExifTagGpsAltitudeRef?)Convert.ToUInt16(result) : null;
-        }
+        public ExifTagGpsAltitudeRef? GpsAltitudeRef => Reader.TryGetTagValue<ushort>(ExifTags.GPSAltitudeRef, out var result) ? (ExifTagGpsAltitudeRef?)Convert.ToUInt16(result) : null;
+
         /// <summary>
         /// Gps bearing when the piture was taken
         /// </summary>
-        public double? GpsDestBearing
-        {
-            get => Reader.TryGetTagValue<double>(ExifTags.GPSDestBearing, out var result) ? (double?)result : null;
-        }
+        public double? GpsDestBearing => Reader.TryGetTagValue<double>(ExifTags.GPSDestBearing, out var result) ? (double?)result : null;
+
         /// <summary>
         /// Indicates the reference used for giving the bearing to the destination point. "T" denotes true direction and "M" is magnetic direction.
         /// </summary>
@@ -186,9 +181,29 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
         /// <summary>
         /// Indicates the speed of GPS receiver movement, unit is given by the GPSSpeedRef property
         /// </summary>
-        public double? GpsSpeed
+        public double? GpsSpeed => Reader.TryGetTagValue<double>(ExifTags.GPSSpeed, out var result) ? (double?)result : null;
+
+        /// <summary>
+        /// UTC
+        /// </summary>
+        private string GpsDateStamp => Reader.TryGetTagValue<string>(ExifTags.GPSDateStamp, out var result) ? result : null;
+        /// <summary>
+        /// UTC
+        /// </summary>
+        private double[] GpsTimeStamp => Reader.TryGetTagValue<double[]>(ExifTags.GPSTimeStamp, out var result) ? result : null;
+
+        public DateTimeOffset? GpsDateTime
         {
-            get => Reader.TryGetTagValue<double>(ExifTags.GPSSpeed, out var result) ? (double?)result : null;
+            get
+            {
+                var date = GpsDateStamp;
+                var time = GpsTimeStamp;
+                if (date == null || time == null || time.Length != 3 
+                    || !DateTimeOffset.TryParseExact(date, "yyyy:MM:dd", CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var datetime))
+                    return null;
+
+                return new DateTimeOffset(datetime.Year, datetime.Month, datetime.Day, (int)time[0], (int)time[1], (int)time[2], TimeSpan.Zero);
+            }
         }
 
         /// <summary>
@@ -233,15 +248,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Lib
         /// <returns>Did succed</returns>
         public bool TryGetRawTagValue<T>(ExifTags tag, out T result)
         {
-            try
-            {
-                return Reader.TryGetTagValue(tag, out result);
-            }
-            catch (Exception)
-            {
-                result = default(T);
-                return false;
-            }
+            return Reader.TryGetTagValue<T>(tag, out result);
         }
 
         public void Dispose()

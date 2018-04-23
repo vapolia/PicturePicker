@@ -104,7 +104,7 @@
         GPSLongitude = 0x4,
         GPSAltitudeRef = 0x5,
         GPSAltitude = 0x6,
-        GPSTimestamp = 0x7,
+        GPSTimeStamp = 0x7,
         GPSSatellites = 0x8,
         GPSStatus = 0x9,
         GPSMeasureMode = 0xA,
