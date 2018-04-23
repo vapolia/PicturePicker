@@ -93,7 +93,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 await picker.DismissViewControllerAsync(true);
                 //picker.Dispose();
                 modalHost.NativeModalViewControllerDisappearedOnItsOwn();
-                tcs.SetCanceled();
+                tcs.SetResult(false);
                 tcs = null;
             };
         }
@@ -231,7 +231,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                     if (imageFile != null)
                         tcs.SetResult(true);
                     else
-                        tcs.SetCanceled();
+                        tcs.SetResult(false);
                     tcs = null;
                 });
             });
