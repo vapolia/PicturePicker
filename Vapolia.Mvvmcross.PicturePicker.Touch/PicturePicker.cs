@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Threading;
 using CoreGraphics;
 using System.Threading.Tasks;
 using Foundation;
@@ -13,7 +11,6 @@ using MvvmCross.Platform.iOS.Views;
 using MvvmCross.Platform.Logging;
 using Photos;
 using UIKit;
-using Vapolia.Mvvmcross.PicturePicker;
 using Vapolia.Mvvmcross.PicturePicker.Touch.Lib;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Touch
@@ -47,18 +44,17 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
 
                 if (metadata == null)
                 {
-                    var tcs0 = new TaskCompletionSource<NSDictionary>();
-
                     //Requiert l'acces à la photo lib
                     //var asset = args.PHAsset; //ios11+
                     var asset = (PHAsset)PHAsset.FetchAssets( new [] { args.ReferenceUrl }, null).firstObject; //ios8-10
+
+                    var tcs0 = new TaskCompletionSource<NSDictionary>();
                     PHImageManager.DefaultManager.RequestImageData(asset, new PHImageRequestOptions {NetworkAccessAllowed = false, DeliveryMode = PHImageRequestOptionsDeliveryMode.Opportunistic, ResizeMode = PHImageRequestOptionsResizeMode.None}, (nsData, uti, orientation, dictionary) =>
                     {
                         var imageSource = CGImageSource.FromData(nsData);
                         var meta = imageSource.CopyProperties(new CGImageOptions(), 0);
                         tcs0.TrySetResult(meta);
                     });
-
                     metadata = await tcs0.Task;
                 }
 

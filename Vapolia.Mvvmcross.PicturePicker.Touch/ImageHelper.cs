@@ -1,3 +1,6 @@
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using CoreGraphics;
 using UIKit;
 
@@ -92,13 +95,13 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
 	    }
 
 
-        //internal static async Task SaveImage(string filePath, Stream stream, CancellationToken cancel)
-        //{
-        //    if (File.Exists(filePath))
-        //        File.Delete(filePath);
+        internal static async Task SaveImage(string filePath, Stream stream, CancellationToken cancel)
+        {
+            if (File.Exists(filePath))
+                File.Delete(filePath);
 
-        //    using (var fileStream = File.OpenWrite(filePath))
-        //        await stream.CopyToAsync(fileStream, 81920, cancel);
-        //}
+            using (var fileStream = File.OpenWrite(filePath))
+                await stream.CopyToAsync(fileStream, 81920, cancel);
+        }
     }
 }
