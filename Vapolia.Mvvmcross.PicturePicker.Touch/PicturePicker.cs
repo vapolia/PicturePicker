@@ -79,10 +79,11 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 await HandleImagePick(image, metadata);
             };
 
-            picker.FinishedPickingImage += async (sender, args) =>
-            {
-                await HandleImagePick(args.Image, null);
-            };
+            //Obsolete
+            //picker.FinishedPickingImage += async (sender, args) =>
+            //{
+            //    await HandleImagePick(args.Image, null);
+            //};
 
             picker.Canceled += async (sender, args) =>
             {
@@ -132,8 +133,9 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             picker.SourceType = UIImagePickerControllerSourceType.Camera;
             picker.CameraCaptureMode = UIImagePickerControllerCameraCaptureMode.Photo;
             picker.CameraDevice = useFrontCamera ? UIImagePickerControllerCameraDevice.Front : UIImagePickerControllerCameraDevice.Rear;
-            picker.AllowsEditing = true;
-            picker.AllowsImageEditing = true;
+            picker.AllowsEditing = false;
+            picker.AllowsImageEditing = false;
+            picker.Editing = false;
             return ChoosePictureCommon(filePath, maxPixelWidth, maxPixelHeight, percentQuality);
         }
 
