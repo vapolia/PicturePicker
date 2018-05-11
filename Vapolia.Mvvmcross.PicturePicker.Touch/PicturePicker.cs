@@ -46,7 +46,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 {
                     //Requiert l'acces à la photo lib
                     //var asset = args.PHAsset; //ios11+
-                    var asset = (PHAsset)PHAsset.FetchAssets( new [] { args.ReferenceUrl ?? args.ImageUrl ?? args.MediaUrl }, null).firstObject; //ios8-10
+                    var asset = (PHAsset)PHAsset.FetchAssets( new [] { args.ReferenceUrl ?? args.ImageUrl ?? args.MediaUrl }, new PHFetchOptions() { IncludeAssetSourceTypes = PHAssetSourceType.UserLibrary|PHAssetSourceType.iTunesSynced|PHAssetSourceType.CloudShared }).firstObject; //ios8-10
 
                     if (asset != null)
                     {
