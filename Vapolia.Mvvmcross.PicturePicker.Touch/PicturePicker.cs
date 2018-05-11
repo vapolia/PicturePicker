@@ -46,16 +46,19 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 {
                     //Requiert l'acces à la photo lib
                     //var asset = args.PHAsset; //ios11+
-                    var asset = (PHAsset)PHAsset.FetchAssets( new [] { args.ReferenceUrl }, null).firstObject; //ios8-10
+                    var asset = (PHAsset)PHAsset.FetchAssets( new [] { args.ReferenceUrl ?? args.ImageUrl ?? args.MediaUrl }, null).firstObject; //ios8-10
 
-                    var tcs0 = new TaskCompletionSource<NSDictionary>();
-                    PHImageManager.DefaultManager.RequestImageData(asset, new PHImageRequestOptions {NetworkAccessAllowed = false, DeliveryMode = PHImageRequestOptionsDeliveryMode.Opportunistic, ResizeMode = PHImageRequestOptionsResizeMode.None}, (nsData, uti, orientation, dictionary) =>
+                    if (asset != null)
                     {
-                        var imageSource = CGImageSource.FromData(nsData);
-                        var meta = imageSource.CopyProperties(new CGImageOptions(), 0);
-                        tcs0.TrySetResult(meta);
-                    });
-                    metadata = await tcs0.Task;
+                        var tcs0 = new TaskCompletionSource<NSDictionary>();
+                        PHImageManager.DefaultManager.RequestImageData(asset, new PHImageRequestOptions {NetworkAccessAllowed = false, DeliveryMode = PHImageRequestOptionsDeliveryMode.Opportunistic, ResizeMode = PHImageRequestOptionsResizeMode.None}, (nsData, uti, orientation, dictionary) =>
+                        {
+                            var imageSource = CGImageSource.FromData(nsData);
+                            var meta = imageSource.CopyProperties(new CGImageOptions(), 0);
+                            tcs0.TrySetResult(meta);
+                        });
+                        metadata = await tcs0.Task;
+                    }
                 }
 
 #if DEBUG
