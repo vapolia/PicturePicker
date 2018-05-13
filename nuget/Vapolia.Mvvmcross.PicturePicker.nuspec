@@ -13,16 +13,15 @@
     <tags>picture picker xamarin ios android</tags>
     <dependencies>
       <group targetFramework="MonoAndroid10">
-        <dependency id="MvvmCross.Platform" version="5.7.0"  />
+        <dependency id="MvvmCross" version="6.0.0"  />
       </group>
 
       <group targetFramework="xamarinios10">
-        <dependency id="MvvmCross.Core" version="5.7.0" />
-        <dependency id="MvvmCross.Platform" version="5.7.0" />
+        <dependency id="MvvmCross" version="6.0.0" />
       </group>
 
       <group targetFramework="netstandard2.0">
-        <!--<dependency id="MvvmCross.Platform" version="5.7.0"  />-->
+        <dependency id="MvvmCross" version="6.0.0"  />
       </group>
     </dependencies>
   </metadata>
@@ -33,11 +32,9 @@
     <!-- droid -->
     <file src="..\Vapolia.Mvvmcross.PicturePicker.Droid\bin\Release\PicturePicker.dll" target="lib\MonoAndroid44\PicturePicker.dll" />
     <file src="..\Vapolia.Mvvmcross.PicturePicker.Droid\bin\Release\Vapolia.Mvvmcross.PicturePicker.Droid.dll" target="lib\MonoAndroid44\Vapolia.Mvvmcross.PicturePicker.Droid.dll" />
-    <file src="PicturePickerPluginBootstrap.Droid.cs.pp" target="content\MonoAndroid44\Bootstrap\PicturePickerPluginBootstrap.cs.pp" />
 
     <!-- ios -->
     <file src="..\Vapolia.Mvvmcross.PicturePicker.Touch\bin\iPhone\Release\PicturePicker.dll" target="lib\Xamarin.iOS\PicturePicker.dll" />
     <file src="..\Vapolia.Mvvmcross.PicturePicker.Touch\bin\iPhone\Release\Vapolia.Mvvmcross.PicturePicker.Touch.dll" target="lib\Xamarin.iOS\Vapolia.Mvvmcross.PicturePicker.Touch.dll" />
-    <file src="PicturePickerPluginBootstrap.iOS.cs.pp" target="content\Xamarin.iOS10\Bootstrap\PicturePickerPluginBootstrap.cs.pp" />
   </files>
 </package>

@@ -9,14 +9,13 @@ using Android.Graphics;
 using Android.Media;
 using Android.OS;
 using Android.Provider;
-using MvvmCross.Platform.Droid;
-using MvvmCross.Platform.Droid.Platform;
-using MvvmCross.Platform.Droid.Views;
-using MvvmCross.Platform.Exceptions;
 using Uri = Android.Net.Uri;
 using Android.Runtime;
 using Android.Util;
-using MvvmCross.Platform.Logging;
+using MvvmCross.Exceptions;
+using MvvmCross.Logging;
+using MvvmCross.Platforms.Android;
+using MvvmCross.Platforms.Android.Views.Base;
 using Stream = System.IO.Stream;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Droid

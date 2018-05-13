@@ -1,17 +1,15 @@
 using System;
-using System.Collections.Generic;
 using System.IO;
 using CoreGraphics;
 using System.Threading.Tasks;
 using Foundation;
 using ImageIO;
 using MobileCoreServices;
-using MvvmCross.Platform.Exceptions;
-using MvvmCross.Platform.iOS.Views;
-using MvvmCross.Platform.Logging;
+using MvvmCross.Exceptions;
+using MvvmCross.Logging;
+using MvvmCross.Platforms.Ios.Views;
 using Photos;
 using UIKit;
-using Vapolia.Mvvmcross.PicturePicker.Touch.Lib;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Touch
 {
@@ -19,7 +17,6 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
     public sealed class PicturePicker : IPicturePicker, IDisposable
     {
         private readonly IMvxLog log;
-        private readonly IMvxIosModalHost modalHost;
         private readonly UIImagePickerController picker;
         // ReSharper disable InconsistentNaming
         private int _maxPixelWidth, _maxPixelHeight;
@@ -30,10 +27,9 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
         private TaskCompletionSource<bool> tcs;
         private bool shouldSaveToGallery;
 
-        public PicturePicker(IMvxLog logger, IMvxIosModalHost modalHost)
+        public PicturePicker(IMvxLog logger)
         {
             log = logger;
-            this.modalHost = modalHost;
 
             picker = new UIImagePickerController();
 
@@ -92,7 +88,6 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             {
                 await picker.DismissViewControllerAsync(true);
                 //picker.Dispose();
-                modalHost.NativeModalViewControllerDisappearedOnItsOwn();
                 tcs.SetResult(false);
                 tcs = null;
             };
@@ -157,12 +152,8 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             _percentQuality = percentQuality;
             _filePath = filePath;
 
-            if (!modalHost.PresentModalViewController(picker, true))
-            {
-                log.Warn("PicturePicker: PresentModalViewController failed");
-                tcs.SetResult(false);
-            }
-
+            var modalHost = UIApplication.SharedApplication.KeyWindow.GetTopModalHostViewController();
+            modalHost.PresentViewController(picker, true, () => tcs.SetResult(false));
             return tcs.Task;
         }
 
@@ -223,11 +214,9 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             {
                 picker.DismissViewController(true, () =>
                 {
-                    modalHost.NativeModalViewControllerDisappearedOnItsOwn();
                     //picker.Dispose();
                     //Fix still image problem when used twice on iOS 7
                     GC.Collect();
-
 
                     if (imageFile != null)
                         tcs.SetResult(true);

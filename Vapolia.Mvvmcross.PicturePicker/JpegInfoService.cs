@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using MvvmCross;
 using Vapolia.Mvvmcross.PicturePicker.Lib;
 
 namespace Vapolia.Mvvmcross.PicturePicker

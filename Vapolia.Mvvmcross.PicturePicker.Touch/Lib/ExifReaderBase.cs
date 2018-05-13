@@ -3,7 +3,7 @@ using Foundation;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
-using MvvmCross.Platform.iOS;
+using MvvmCross.Platforms.Ios;
 using Vapolia.Mvvmcross.PicturePicker.Lib;
 
 

@@ -1,13 +1,11 @@
 using System;
 using System.Linq;
-using MvvmCross.Platform;
-using MvvmCross.Platform.Plugins;
-using Android.Runtime;
-using Vapolia.Mvvmcross.PicturePicker.Lib;
+using MvvmCross;
+using MvvmCross.Plugin;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Droid
 {
-    [Preserve(AllMembers = true)]
+    [Android.Runtime.Preserve(AllMembers = true)]
     public class Plugin : IMvxPlugin
     {
         public void Load()

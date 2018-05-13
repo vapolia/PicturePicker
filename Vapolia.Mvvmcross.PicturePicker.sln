@@ -10,8 +10,6 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "nuget", "nuget", "{DFCDF5F1-70B8-45E5-867C-3FDED776C601}"
 	ProjectSection(SolutionItems) = preProject
 		nuget\pack.bat = nuget\pack.bat
-		nuget\PicturePickerPluginBootstrap.Droid.cs.pp = nuget\PicturePickerPluginBootstrap.Droid.cs.pp
-		nuget\PicturePickerPluginBootstrap.iOS.cs.pp = nuget\PicturePickerPluginBootstrap.iOS.cs.pp
 		nuget\Vapolia.Mvvmcross.PicturePicker.nuspec = nuget\Vapolia.Mvvmcross.PicturePicker.nuspec
 	EndProjectSection
 EndProject

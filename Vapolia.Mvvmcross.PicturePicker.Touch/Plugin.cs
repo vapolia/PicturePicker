@@ -1,9 +1,9 @@
-using Foundation;
-using MvvmCross.Platform;
-using MvvmCross.Platform.Plugins;
+using MvvmCross;
+using MvvmCross.Plugin;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Touch
 {
+    [MvxPlugin]
     [Preserve(AllMembers = true)]
     public class Plugin : IMvxPlugin
     {
