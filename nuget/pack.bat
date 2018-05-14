@@ -10,7 +10,7 @@ set nugetServer=http://nugets.vapolia.fr/
 
 
 del *.nupkg
-set version=3.0.1
+set version=3.0.2
 nuget pack Vapolia.Mvvmcross.PicturePicker.nuspec -Version "%version%"
 nuget push *.nupkg -Source %nugetServer%
 

@@ -103,7 +103,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             };
 
             var modalHost = UIApplication.SharedApplication.KeyWindow.GetTopModalHostViewController();
-            modalHost.PresentViewController(picker, true, () => tcs.TrySetResult(false));
+            modalHost.PresentViewController(picker, true, null);
 
             if (!await tcs.Task)
                 pictureNames.Clear();
