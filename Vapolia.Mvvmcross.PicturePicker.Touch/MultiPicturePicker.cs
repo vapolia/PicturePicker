@@ -10,7 +10,6 @@ using ImageIO;
 using MobileCoreServices;
 using MvvmCross.Exceptions;
 using MvvmCross.Logging;
-using MvvmCross.Navigation;
 using MvvmCross.Platforms.Ios.Views;
 using Photos;
 using UIKit;
@@ -21,6 +20,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
     public class MultiPicturePicker : IMultiPicturePicker
     {
         private readonly IMvxLog log;
+        GMImagePickerController picker; //to prevent dispose
 
         public MultiPicturePicker(IMvxLog logger)
         {
@@ -41,7 +41,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             var tcs = new TaskCompletionSource<bool>();
             var pictureNames = new List<string>();
 
-            var picker = new GMImagePickerController
+            picker = new GMImagePickerController
             {
                 DisplaySelectionInfoToolbar = true,
                 DisplayAlbumsNumberOfAssets = true,
@@ -103,11 +103,12 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             };
 
             var modalHost = UIApplication.SharedApplication.KeyWindow.GetTopModalHostViewController();
-            modalHost.PresentViewController(picker, true, null);
+            await modalHost.PresentViewControllerAsync(picker, true);
 
             if (!await tcs.Task)
                 pictureNames.Clear();
 
+            picker = null;
             return pictureNames;
         }
 

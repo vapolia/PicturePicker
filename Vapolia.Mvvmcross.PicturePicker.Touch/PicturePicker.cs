@@ -137,12 +137,12 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             return ChoosePictureCommon(filePath, maxPixelWidth, maxPixelHeight, percentQuality);
         }
 
-        private Task<bool> ChoosePictureCommon(string filePath, int maxPixelWidth, int maxPixelHeight, int percentQuality)
+        private async Task<bool> ChoosePictureCommon(string filePath, int maxPixelWidth, int maxPixelHeight, int percentQuality)
         {
             if (tcs != null)
             {
                 log.Error("PicturePicker: A call is already in progress");
-                return Task.FromResult(false);
+                return false;
             }
 
             tcs = new TaskCompletionSource<bool>();
@@ -153,8 +153,8 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             _filePath = filePath;
 
             var modalHost = UIApplication.SharedApplication.KeyWindow.GetTopModalHostViewController();
-            modalHost.PresentViewController(picker, true, null);
-            return tcs.Task;
+            await modalHost.PresentViewControllerAsync(picker, true);
+            return await tcs.Task;
         }
 
         private async Task HandleImagePick(UIImage image, NSDictionary metadata)
