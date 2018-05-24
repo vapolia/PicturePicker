@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using CoreGraphics;
@@ -8,15 +9,19 @@ using Foundation;
 using GMImagePicker;
 using ImageIO;
 using MobileCoreServices;
+using MvvmCross;
 using MvvmCross.Exceptions;
 using MvvmCross.Logging;
+using MvvmCross.Platforms.Ios.Presenters;
 using MvvmCross.Platforms.Ios.Views;
+using MvvmCross.Presenters;
+using MvvmCross.ViewModels;
 using Photos;
 using UIKit;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Touch
 {
-    [Preserve(AllMembers = true)]
+    [Foundation.Preserve(AllMembers = true)]
     public class MultiPicturePicker : IMultiPicturePicker
     {
         private readonly IMvxLog log;
@@ -35,6 +40,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
         /// <returns>List of image filepaths including saveFolder. Filenames are generated as guids.</returns>
         public async Task<List<string>> ChoosePicture(string storageFolder, MultiPicturePickerOptions options = null)
         {
+            log.Trace("ChoosePicture called");
             if(options == null)
                 options = new MultiPicturePickerOptions();
 
@@ -70,14 +76,19 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 //PickerStatusBarStyle = UIStatusBarStyle.LightContent;
                 //UseCustomFontForNavigationBar = true;
             };
-            picker.Canceled += (sender, args) => tcs.TrySetResult(false);
+            picker.Canceled += (sender, args) =>
+            {
+                log.Trace("ChoosePicture picker Canceled");
+                tcs.TrySetResult(false);
+            };
             picker.FinishedPickingAssets += async (sender, args) => 
             { 
+                log.Trace("ChoosePicture picker FinishedPickingAssets");
                 if(args.Assets.Length == 0)
                     tcs.TrySetResult(false);
                 else
                 {
-                    var cancel = new CancellationTokenSource();
+                    var cancel = new CancellationTokenSource(); //The called can display a "working indicator"
                     options.SavingAction?.Invoke(cancel.Token);
                     try
                     {
@@ -91,8 +102,8 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                     }
                     catch(Exception e)
                     {
-                        log.Error(e.ToLongString());
                         tcs.TrySetResult(false);
+                        log.Error(e.ToLongString());
                     }
                     finally 
                     {
@@ -102,12 +113,27 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
 
             };
 
-            var modalHost = UIApplication.SharedApplication.KeyWindow.GetTopModalHostViewController();
-            await modalHost.PresentViewControllerAsync(picker, true);
+            var modalHost = GetTopModalHostViewController();
+            if (modalHost == null)
+            {
+                log.Error("ChoosePicture no modal host available to push this viewcontroller");
+                return null;
+            }
+            try
+            {
+                await modalHost.PresentViewControllerAsync(picker, true);
+                log.Trace("ChoosePicture modalHost presented");
+            }
+            catch(Exception e)
+            {
+                log.Error($"ChoosePicture modalHost presented exception: {e.Message}");
+                tcs.TrySetResult(false);
+            }
 
             if (!await tcs.Task)
                 pictureNames.Clear();
 
+            log.Trace($"ChoosePicture finished");
             picker = null;
             return pictureNames;
         }
@@ -145,6 +171,26 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 log.Error($"MultiPicturePicker: failed to save photo to {filePath}");
 
             return filePath;
+        }
+
+
+        internal static UIViewController GetTopModalHostViewController()
+        {
+            //souci qd l'appel est fait d'un controlleur déjà modal: ca le fait disparaitre et par conséquent disparaitre aussi ce controlleur
+            //car GetTopModalHostViewController peux renvoyer un controlleur modal ...
+            //car KeyWindow est une UIAlert window avec un WindowLevel à 200
+            var window = UIApplication.SharedApplication.Windows.LastOrDefault(w => w.WindowLevel == UIWindowLevel.Normal);
+            if (window == null)
+                return null;
+
+            var uiViewController = window.RootViewController;
+            do
+            {
+                if (uiViewController.PresentedViewController is UINavigationController)
+                    uiViewController = uiViewController.PresentedViewController;
+            }
+            while (uiViewController.PresentedViewController != null);
+            return uiViewController;
         }
     }
 }

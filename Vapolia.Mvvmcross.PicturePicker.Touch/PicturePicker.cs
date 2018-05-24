@@ -10,6 +10,7 @@ using MvvmCross.Logging;
 using MvvmCross.Platforms.Ios.Views;
 using Photos;
 using UIKit;
+using Vapolia.Mvvmcross.PicturePicker.Touch.Lib;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Touch
 {
@@ -145,6 +146,13 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
                 return false;
             }
 
+            var modalHost = MultiPicturePicker.GetTopModalHostViewController();
+            if (modalHost == null)
+            {
+                log.Error("ChoosePicture no modal host available to push this viewcontroller");
+                return false;
+            }
+
             tcs = new TaskCompletionSource<bool>();
 
             _maxPixelWidth = maxPixelWidth;
@@ -152,7 +160,6 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
             _percentQuality = percentQuality;
             _filePath = filePath;
 
-            var modalHost = UIApplication.SharedApplication.KeyWindow.GetTopModalHostViewController();
             await modalHost.PresentViewControllerAsync(picker, true);
             return await tcs.Task;
         }
