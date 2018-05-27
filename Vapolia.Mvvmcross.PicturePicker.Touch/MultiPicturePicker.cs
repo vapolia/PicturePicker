@@ -149,13 +149,22 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
 
             var tcs = new TaskCompletionSource<UIImage>();
             PHImageManager.DefaultManager.RequestImageForAsset(asset, new CGSize(width, height), PHImageContentMode.AspectFit, new PHImageRequestOptions
-                { NetworkAccessAllowed = false, DeliveryMode = PHImageRequestOptionsDeliveryMode.Opportunistic, ResizeMode = PHImageRequestOptionsResizeMode.Exact }, (result, info) =>
+                { NetworkAccessAllowed = true, DeliveryMode = PHImageRequestOptionsDeliveryMode.HighQualityFormat, ResizeMode = PHImageRequestOptionsResizeMode.Exact }, (result, info) =>
             {
-                tcs.TrySetResult(result);
+                //With the Opportunistic delivery mode, the result block may be called more than once with different sizes
+                //if (!info.TryGetValue(new NSString("PHImageResultIsDegradedKey"), out var value) || ((NSNumber)value).Int64Value == 0)
+                //{
+                    // Do something with the FULL SIZED image
+                    tcs.TrySetResult(result);
+                //} 
+                //else 
+                //{
+                //    // Do something with the regraded image
+                //}
             });
 
             var tcs0 = new TaskCompletionSource<NSDictionary>();
-            PHImageManager.DefaultManager.RequestImageData(asset, new PHImageRequestOptions { NetworkAccessAllowed = false, DeliveryMode = PHImageRequestOptionsDeliveryMode.Opportunistic, ResizeMode = PHImageRequestOptionsResizeMode.None }, (nsData, uti, orientation, dictionary) =>
+            PHImageManager.DefaultManager.RequestImageData(asset, new PHImageRequestOptions { NetworkAccessAllowed = true, DeliveryMode = PHImageRequestOptionsDeliveryMode.FastFormat, ResizeMode = PHImageRequestOptionsResizeMode.None }, (nsData, uti, orientation, dictionary) =>
              {
                  var imageSource = CGImageSource.FromData(nsData);
                  var meta = imageSource.CopyProperties(new CGImageOptions(), 0);
