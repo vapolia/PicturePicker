@@ -168,13 +168,20 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
              {
                  var imageSource = CGImageSource.FromData(nsData);
                  var meta = imageSource.CopyProperties(new CGImageOptions(), 0);
+                 if (meta.TryGetValue(new NSString(ImageIO.CGImageProperties.Orientation), out var value))
+                 {
+                     var i = 0;
+                 }
+                 //if(!meta.ContainsKey(new NSString(ImageIO.CGImageProperties.Orientation)))
+                 //   meta[ImageIO.CGImageProperties.Orientation] = new NSNumber((int)imageSource.);
                  tcs0.TrySetResult(meta);
              });
 
             var metadata = await tcs0.Task;
             var image = await tcs.Task;
 
-            var imageDestination = CGImageDestination.Create(new CGDataConsumer(NSUrl.FromFilename(filePath)), UTType.JPEG, 1, new CGImageDestinationOptions {LossyCompressionQuality = (float) (options.PercentQuality / 100.0)});
+            var imageDestination = CGImageDestination.Create(new CGDataConsumer(NSUrl.FromFilename(filePath)), UTType.JPEG, 1, new CGImageDestinationOptions {LossyCompressionQuality = (float) (options.PercentQuality / 100.0) });
+            var o = image.Orientation;
             imageDestination.AddImage(image.CGImage, metadata);
             if (!imageDestination.Close()) //Dispose is called by Close ...
                 log.Error($"MultiPicturePicker: failed to save photo to {filePath}");
