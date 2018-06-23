@@ -23,7 +23,7 @@ using Stream = System.IO.Stream;
 
 namespace Vapolia.Mvvmcross.PicturePicker.Droid
 {
-    [ContentProvider(new[] { "vapolia.mvvmcross.picturepicker.fileProvider" }, Exported = false, GrantUriPermissions = true)]
+    [ContentProvider(new[] { "@string/vapolia_picturepicker_fileprovidername" }, Exported = false, GrantUriPermissions = true)]
     [MetaData("android.support.FILE_PROVIDER_PATHS", Resource = "@xml/vapolia_picturepicker_paths")]
     public class VapoliaPicturePickerFileProvider : FileProvider
     {
@@ -77,8 +77,15 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                 var intent = new Intent(MediaStore.ActionImageCapture);
 
                 var file = Java.IO.File.CreateTempFile(Guid.NewGuid().ToString("N"), ".jpg", androidGlobals.ApplicationContext.GetExternalFilesDir(Android.OS.Environment.DirectoryPictures));
-                if(Build.VERSION.SdkInt >= BuildVersionCodes.N)
-                    photoUri = FileProvider.GetUriForFile(androidGlobals.ApplicationContext, "vapolia.mvvmcross.picturepicker.fileProvider", file); //Android 22.1+, required on android 24+
+                if (Build.VERSION.SdkInt >= BuildVersionCodes.N)
+                {
+                    var res = androidGlobals.ApplicationContext.Resources;
+                    var stringId = res.GetIdentifier("vapolia_picturepicker_fileprovidername", "string", androidGlobals.ApplicationContext.PackageName);
+                    if(stringId <= 0)
+                        throw new Exception("you must declare a string value in your app's resource: @string/vapolia_picturepicker_fileprovidername with value 'com.yourcompany.yourapp.vapolia.picturepicker'. ex: <resources>\r\n    <string name=\"vapolia_picturepicker_fileprovidername\">com.yourcompany.yourapp.vapolia.picturepicker</string>\r\n</resources>\r\n");
+                    var fileProviderName = res.GetString(stringId); //vapolia.mvvmcross.picturepicker.fileProvider
+                    photoUri = FileProvider.GetUriForFile(androidGlobals.ApplicationContext, fileProviderName, file); //Android 22.1+, required on android 24+
+                }
                 else
                     photoUri = Uri.FromFile(file);
                 //cachedUriLocation = GetNewImageUri();
