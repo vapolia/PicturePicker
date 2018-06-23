@@ -15,7 +15,7 @@ cd ..
 nuget restore
 $msbuildparams = '/t:Clean;Build', '/p:Configuration=Release', '/p:Platform=Any CPU', 'Vapolia.Mvvmcross.PicturePicker.sln'
 & $msbuild $msbuildparams
-cd .nuget
+cd nuget
 
 del *.nupkg
 
