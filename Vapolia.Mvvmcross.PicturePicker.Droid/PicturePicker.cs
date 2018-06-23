@@ -11,6 +11,7 @@ using Android.OS;
 using Android.Provider;
 using Uri = Android.Net.Uri;
 using Android.Runtime;
+using Android.Support.V4.Content;
 using Android.Util;
 using MvvmCross.Exceptions;
 using MvvmCross.Logging;
@@ -18,14 +19,22 @@ using MvvmCross.Platforms.Android;
 using MvvmCross.Platforms.Android.Views.Base;
 using Stream = System.IO.Stream;
 
+
+
 namespace Vapolia.Mvvmcross.PicturePicker.Droid
 {
+    [ContentProvider(new[] { "vapolia.mvvmcross.picturepicker.fileProvider" }, Exported = false, GrantUriPermissions = true)]
+    [MetaData("android.support.FILE_PROVIDER_PATHS", Resource = "@xml/vapolia_picturepicker_paths")]
+    public class VapoliaPicturePickerFileProvider : FileProvider
+    {
+    }
+
     [Preserve(AllMembers = true)]
     public class PicturePicker : MvxAndroidTask, IPicturePicker
     {
         private readonly IMvxLog log;
         private readonly IMvxAndroidGlobals androidGlobals;
-        private Uri cachedUriLocation;
+        private Uri photoUri;
         private RequestParameters currentRequestParameters;
         private bool shouldSaveToGallery;
 
@@ -35,47 +44,75 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
             this.androidGlobals = androidGlobals;
         }
 
-        public Task<bool> ChoosePictureFromLibrary(string filePath, Action<Task<bool>> saving = null, int maxPixelWidth = 0, int maxPixelHeight = 0, int percentQuality = 80)
+        public async Task<bool> ChoosePictureFromLibrary(string filePath, Action<Task<bool>> saving = null, int maxPixelWidth = 0, int maxPixelHeight = 0, int percentQuality = 80)
         {
-            shouldSaveToGallery = false;
-            var intent = new Intent(Intent.ActionGetContent);
-            intent.SetType("image/*");
-            var tcs = new TaskCompletionSource<bool>();
-            ChoosePictureCommon(MvxIntentRequestCode.PickFromFile, intent, maxPixelWidth, maxPixelHeight, percentQuality,
-                async stream =>
-                {
-                    await SaveImage(filePath, stream, CancellationToken.None);
-                    tcs.SetResult(true);
-                }, () => tcs.SetResult(false));
-            return tcs.Task;
+            try
+            {
+                shouldSaveToGallery = false;
+                var intent = new Intent(Intent.ActionGetContent);
+                intent.SetType("image/*");
+                var tcs = new TaskCompletionSource<bool>();
+                ChoosePictureCommon(MvxIntentRequestCode.PickFromFile, intent, maxPixelWidth, maxPixelHeight, percentQuality,
+                    async stream =>
+                    {
+                        await SaveImage(filePath, stream, CancellationToken.None);
+                        tcs.SetResult(true);
+                    }, () => tcs.SetResult(false));
+
+                return await tcs.Task;
+            }
+            finally
+            {
+                currentRequestParameters = null;
+            }
         }
 
         public bool HasCamera => Application.Context.PackageManager.HasSystemFeature(PackageManager.FeatureCamera);
 
-        public Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelWidth = 0, int maxPixelHeight = 0, int percentQuality = 0, bool useFrontCamera = false, bool saveToGallery = false)
+        public async Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelWidth = 0, int maxPixelHeight = 0, int percentQuality = 80, bool useFrontCamera = false, bool saveToGallery = false)
         {
-            shouldSaveToGallery = saveToGallery;
-            var intent = new Intent(MediaStore.ActionImageCapture);
-
-            cachedUriLocation = GetNewImageUri();
-            intent.PutExtra(MediaStore.ExtraOutput, cachedUriLocation);
-            intent.PutExtra("outputFormat", Bitmap.CompressFormat.Jpeg.ToString());
-            intent.PutExtra("return-data", true);
-            if (useFrontCamera && Application.Context.PackageManager.HasSystemFeature(PackageManager.FeatureCameraFront))
+            try
             {
-                intent.PutExtra("android.intent.extras.CAMERA_FACING", (int)Android.Hardware.CameraFacing.Front); //lower than LOLLIPOP_MR1
-                intent.PutExtra("android.intent.extras.LENS_FACING_FRONT", 1); //LOLLIPOP_MR1 or greater, except Android7
-                intent.PutExtra("android.intent.extra.USE_FRONT_CAMERA", true); //Android7
+                shouldSaveToGallery = saveToGallery;
+                var intent = new Intent(MediaStore.ActionImageCapture);
+
+                var file = Java.IO.File.CreateTempFile(Guid.NewGuid().ToString("N"), ".jpg", androidGlobals.ApplicationContext.GetExternalFilesDir(Android.OS.Environment.DirectoryPictures));
+                if(Build.VERSION.SdkInt >= BuildVersionCodes.N)
+                    photoUri = FileProvider.GetUriForFile(androidGlobals.ApplicationContext, "vapolia.mvvmcross.picturepicker.fileProvider", file); //Android 22.1+, required on android 24+
+                else
+                    photoUri = Uri.FromFile(file);
+                //cachedUriLocation = GetNewImageUri();
+                intent.PutExtra(MediaStore.ExtraOutput, photoUri);
+                intent.PutExtra("outputFormat", Bitmap.CompressFormat.Jpeg.ToString());
+                intent.PutExtra("return-data", true);
+                if (useFrontCamera && Application.Context.PackageManager.HasSystemFeature(PackageManager.FeatureCameraFront))
+                {
+                    intent.PutExtra("android.intent.extras.CAMERA_FACING", (int) Android.Hardware.CameraFacing.Front); //lower than LOLLIPOP_MR1
+                    intent.PutExtra("android.intent.extras.LENS_FACING_FRONT", 1); //LOLLIPOP_MR1 or greater, except Android7
+                    intent.PutExtra("android.intent.extra.USE_FRONT_CAMERA", true); //Android7
+                }
+
+                var tcs = new TaskCompletionSource<bool>();
+                ChoosePictureCommon(MvxIntentRequestCode.PickFromCamera, intent, maxPixelWidth, maxPixelHeight, percentQuality,
+                    async stream =>
+                    {
+                        await SaveImage(filePath, stream, CancellationToken.None);
+                        tcs.SetResult(true);
+                    }, () => tcs.SetResult(false));
+
+                return await tcs.Task;
+            }
+            catch (Exception e)
+            {
+                log.Error(e, "Error in TakePicture");
+                currentRequestParameters.AssumeCancelled();
+            }
+            finally
+            {
+                currentRequestParameters = null;
             }
 
-            var tcs = new TaskCompletionSource<bool>();
-            ChoosePictureCommon(MvxIntentRequestCode.PickFromCamera, intent, maxPixelWidth, maxPixelHeight, percentQuality,
-                async stream =>
-                {
-                    await SaveImage(filePath, stream, CancellationToken.None);
-                    tcs.SetResult(true);
-                }, () => tcs.SetResult(false));
-            return tcs.Task;
+            return false;
         }
 
         private async Task SaveImage(string filePath, Stream stream, CancellationToken cancel)
@@ -87,15 +124,15 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                 await stream.CopyToAsync(fileStream, 81920, cancel);
         }
 
-        private Uri GetNewImageUri()
-        {
-            // Optional - specify some metadata for the picture
-            var contentValues = new ContentValues();
-            //contentValues.Put(MediaStore.Images.ImageColumnsConsts.Description, "A camera photo");
+        //private Uri GetNewImageUri()
+        //{
+        //    // Optional - specify some metadata for the picture
+        //    var contentValues = new ContentValues();
+        //    //contentValues.Put(MediaStore.Images.ImageColumnsConsts.Description, "A camera photo");
 
-            // Specify where to put the image
-            return androidGlobals.ApplicationContext.ContentResolver.Insert(MediaStore.Images.Media.ExternalContentUri, contentValues);
-        }
+        //    // Specify where to put the image
+        //    return androidGlobals.ApplicationContext.ContentResolver.Insert(MediaStore.Images.Media.ExternalContentUri, contentValues);
+        //}
 
         public void ChoosePictureCommon(MvxIntentRequestCode pickId, Intent intent, int maxPixelWidth, int maxPixelHeight,
                                         int percentQuality, Action<Stream> pictureAvailable, Action assumeCancelled)
@@ -104,55 +141,51 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                 throw new MvxException("Cannot request a second picture while the first request is still pending");
 
             currentRequestParameters = new RequestParameters(maxPixelWidth, maxPixelHeight, percentQuality, pictureAvailable, assumeCancelled);
-            StartActivityForResult((int)pickId, intent);
+            if (intent.ResolveActivity(androidGlobals.ApplicationContext.PackageManager) != null)
+                StartActivityForResult((int) pickId, intent);
+            else
+                assumeCancelled();
         }
 
         protected override void ProcessMvxIntentResult(MvxIntentResultEventArgs result)
         {
-            log.Trace("ProcessMvxIntentResult started...");
+            //thumbnail !
+            //var thumbnail = (Bitmap)result.Data.Extras.Get("data"); 
 
-            Uri uri;
-
+            Uri uri = null;
             switch ((MvxIntentRequestCode)result.RequestCode)
             {
                 case MvxIntentRequestCode.PickFromFile:
-                    uri = result.Data?.Data;
+                    if(result.ResultCode == Result.Ok)
+                        uri = result.Data?.Data;
                     break;
                 case MvxIntentRequestCode.PickFromCamera:
-                    uri = cachedUriLocation;
+                    if(result.ResultCode == Result.Ok)
+                        uri = photoUri;
                     break;
                 default:
                     // ignore this result - it's not for us
-                    log.Trace("Unexpected request received from MvxIntentResult - request was {0}",
-                                    result.RequestCode);
+                    log.Error($"Unexpected request received from MvxIntentResult - request was {result.RequestCode}");
                     return;
             }
 
-            //Do heavy work in a worker thread
-            Task.Run(() => ProcessPictureUri(result, uri));
+            if (uri != null)
+            {
+                //Do heavy work in a worker thread
+                Task.Run(() => ProcessPictureUri(result, uri));
+            }
+            else
+                currentRequestParameters.AssumeCancelled();
         }
 
         private void ProcessPictureUri(MvxIntentResultEventArgs result, Uri uri)
         {
-            if (currentRequestParameters == null)
-            {
-                log.Error("Internal error - response received but _currentRequestParameters is null");
-                return; // we have not handled this - so we return null
-            }
-
             var responseSent = false;
             try
             {
-                // Note for furture maintenance - it might be better to use var outputFileUri = data.GetParcelableArrayExtra("outputFileuri") here?
-                if (result.ResultCode != Result.Ok)
+                if (string.IsNullOrEmpty(uri.Path))
                 {
-                    log.Trace("Non-OK result received from MvxIntentResult - {0} - request was {1}", result.ResultCode, result.RequestCode);
-                    return;
-                }
-
-                if (string.IsNullOrEmpty(uri?.Path))
-                {
-                    log.Trace("Empty uri or file path received for MvxIntentResult");
+                    log.Error("Empty uri or file path received for MvxIntentResult");
                     return;
                 }
 
@@ -232,6 +265,9 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
 
         private Bitmap LoadResampledBitmap(ContentResolver contentResolver, Uri uri, int sampleSize)
         {
+            if (sampleSize == 1)
+                return MediaStore.Images.Media.GetBitmap(contentResolver, uri);
+
             using (var inputStream = contentResolver.OpenInputStream(uri))
             {
                 var optionsDecode = new BitmapFactory.Options { InSampleSize = sampleSize };
@@ -302,13 +338,27 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
 
         private string GetRealPathFromUri(ContentResolver contentResolver, Uri uri)
         {
-            var proj = new[] { MediaStore.Images.ImageColumns.Data };
-            using (var cursor = contentResolver.Query(uri, proj, null, null, null))
+            switch (uri.Scheme)
             {
-                var columnIndex = cursor.GetColumnIndexOrThrow(MediaStore.Images.ImageColumns.Data);
-                if (cursor.MoveToFirst())
-                    return cursor.GetString(columnIndex);
+                    case "file":
+                        return uri.Path;
+
+                    case "content":
+                        var proj = new[] { MediaStore.Images.ImageColumns.Data };
+                        using (var cursor = contentResolver.Query(uri, proj, null, null, null))
+                        {
+                            var columnIndex = cursor.GetColumnIndexOrThrow(MediaStore.Images.ImageColumns.Data);
+                            if (cursor.MoveToFirst())
+                                return cursor.GetString(columnIndex);
+                        }
+                        log.Error($"PicturePicker content uri not found: {uri}");
+                        break;
+
+                    default:
+                        log.Error($"PicturePicker uri not supported: {uri}");
+                        throw new NotSupportedException($"uri not supported {uri}");
             }
+
             return null;
         }
 

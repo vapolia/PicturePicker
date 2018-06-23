@@ -12,7 +12,7 @@
     <description>Picture Picker for Mvvmcross iOS and Android</description>
     <tags>picture picker xamarin ios android</tags>
     <dependencies>
-        <dependency id="MvvmCross" version="6.0.1"  />
+        <dependency id="MvvmCross" version="6.1.0"  />
     </dependencies>
   </metadata>
   <files>

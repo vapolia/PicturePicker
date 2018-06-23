@@ -183,11 +183,13 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
         }
 
 
+        /// <summary>
+        /// ouci qd l'appel est fait d'un controlleur déjà modal: ca le fait disparaitre et par conséquent disparaitre aussi ce controlleur
+        /// car GetTopModalHostViewController peux renvoyer un controlleur modal ...
+        /// car KeyWindow est une UIAlert window avec un WindowLevel à 200
+        /// </summary>
         internal static UIViewController GetTopModalHostViewController()
         {
-            //souci qd l'appel est fait d'un controlleur déjà modal: ca le fait disparaitre et par conséquent disparaitre aussi ce controlleur
-            //car GetTopModalHostViewController peux renvoyer un controlleur modal ...
-            //car KeyWindow est une UIAlert window avec un WindowLevel à 200
             var window = UIApplication.SharedApplication.Windows.LastOrDefault(w => w.WindowLevel == UIWindowLevel.Normal);
             if (window == null)
                 return null;
