@@ -25,8 +25,19 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
 {
     [ContentProvider(new[] { "@string/vapolia_picturepicker_fileprovidername" }, Exported = false, GrantUriPermissions = true)]
     [MetaData("android.support.FILE_PROVIDER_PATHS", Resource = "@xml/vapolia_picturepicker_paths")]
+    [Preserve]
     public class VapoliaPicturePickerFileProvider : FileProvider
     {
+        [Preserve]
+        public VapoliaPicturePickerFileProvider()
+        {
+        }
+
+        [Preserve]
+        protected VapoliaPicturePickerFileProvider(IntPtr javaReference, JniHandleOwnership transfer)
+            : base(javaReference, transfer)
+        {
+        }
     }
 
     [Preserve(AllMembers = true)]
@@ -42,6 +53,16 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
         {
             log = logger;
             this.androidGlobals = androidGlobals;
+            if(androidGlobals == null)
+                throw new ArgumentNullException(nameof(androidGlobals));
+            if(androidGlobals.ApplicationContext == null)
+                throw new Exception("androidGlobals.ApplicationContext is null");
+            if(androidGlobals.ApplicationContext.Resources == null)
+                throw new Exception("androidGlobals.ApplicationContext.Resources is null");
+            if(androidGlobals.ApplicationContext.PackageManager == null)
+                throw new Exception("androidGlobals.ApplicationContext.PackageManager is null");
+            if(androidGlobals.ApplicationContext.PackageName == null)
+                throw new Exception("androidGlobals.ApplicationContext.PackageName is null");
         }
 
         public async Task<bool> ChoosePictureFromLibrary(string filePath, Action<Task<bool>> saving = null, int maxPixelWidth = 0, int maxPixelHeight = 0, int percentQuality = 80)
@@ -85,6 +106,8 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
                         throw new Exception("you must declare a string value in your app's resource: @string/vapolia_picturepicker_fileprovidername with value 'com.yourcompany.yourapp.vapolia.picturepicker'. ex: <resources>\r\n    <string name=\"vapolia_picturepicker_fileprovidername\">com.yourcompany.yourapp.vapolia.picturepicker</string>\r\n</resources>\r\n");
                     var fileProviderName = res.GetString(stringId); //vapolia.mvvmcross.picturepicker.fileProvider
                     photoUri = FileProvider.GetUriForFile(androidGlobals.ApplicationContext, fileProviderName, file); //Android 22.1+, required on android 24+
+                    if(photoUri == null)
+                        throw new Exception("FileProvider.GetUriForFile returned null!");
                 }
                 else
                     photoUri = Uri.FromFile(file);
