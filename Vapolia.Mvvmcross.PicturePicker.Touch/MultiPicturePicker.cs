@@ -9,13 +9,8 @@ using Foundation;
 using GMImagePicker;
 using ImageIO;
 using MobileCoreServices;
-using MvvmCross;
 using MvvmCross.Exceptions;
 using MvvmCross.Logging;
-using MvvmCross.Platforms.Ios.Presenters;
-using MvvmCross.Platforms.Ios.Views;
-using MvvmCross.Presenters;
-using MvvmCross.ViewModels;
 using Photos;
 using UIKit;
 
@@ -184,7 +179,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Touch
 
 
         /// <summary>
-        /// ouci qd l'appel est fait d'un controlleur déjà modal: ca le fait disparaitre et par conséquent disparaitre aussi ce controlleur
+        /// Souci qd l'appel est fait d'un controlleur déjà modal: ca le fait disparaitre et par conséquent disparaitre aussi ce controlleur
         /// car GetTopModalHostViewController peux renvoyer un controlleur modal ...
         /// car KeyWindow est une UIAlert window avec un WindowLevel à 200
         /// </summary>

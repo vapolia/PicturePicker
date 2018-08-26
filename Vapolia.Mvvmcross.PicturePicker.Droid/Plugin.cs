@@ -11,6 +11,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
         public void Load()
         {
             Mvx.RegisterType<IPicturePicker, PicturePicker>();
+            Mvx.RegisterType<IMultiPicturePicker, PicturePicker>();
             //Mvx.RegisterType<IExifReader, ExifBinaryReader>();
             //Mvx.RegisterType<IJpegInfo, JpegInfo>();
         }
