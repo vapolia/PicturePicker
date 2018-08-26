@@ -7,7 +7,7 @@
 #####set /p nugetServer=Enter base nuget server url (with /): 
 $nugetServer="http://nugets.vapolia.fr/"
 $msbuild = 'C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe'
-$version="3.0.9"
+$version="3.1.0"
 
 #####################
 #Build release config

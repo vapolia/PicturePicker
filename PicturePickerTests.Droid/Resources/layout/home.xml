@@ -34,7 +34,16 @@
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:layout_gravity="bottom|end"
-    android:layout_marginEnd="100dp"
+    android:layout_marginEnd="80dp"
+    android:layout_marginBottom="@dimen/fab_margin"
+    app:srcCompat="@android:drawable/ic_dialog_email" />
+
+  <android.support.design.widget.FloatingActionButton
+    app:MvxBind="Click PickPictureCommand"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="bottom|end"
+    android:layout_marginEnd="150dp"
     android:layout_marginBottom="@dimen/fab_margin"
     app:srcCompat="@android:drawable/ic_dialog_email" />
 

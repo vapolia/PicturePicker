@@ -15,8 +15,8 @@ namespace PicturePickerTests.Droid
         private string displayedImagePath;
 
         public ICommand TakePictureCommand => new MvxAsyncCommand(TakePicture);
-
         public ICommand PickPicturesCommand => new MvxAsyncCommand(PickPictures);
+        public ICommand PickPictureCommand => new MvxAsyncCommand(PickPicture);
 
         public string ImagePath
         {
@@ -31,6 +31,17 @@ namespace PicturePickerTests.Droid
 
             var picker = (IPicturePicker)Mvx.IoCConstruct<PicturePicker>();
             var ok = await picker.TakePicture(imagePath);
+            if (ok)
+                ImagePath = "file://" + imagePath;
+        }
+
+        private async Task PickPicture()
+        {
+            var path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.Create);
+            var imagePath = Path.Combine(path, Guid.NewGuid().ToString("N") + ".jpg");
+
+            var picker = (IPicturePicker)Mvx.IoCConstruct<PicturePicker>();
+            var ok = await picker.ChoosePictureFromLibrary(imagePath);
             if (ok)
                 ImagePath = "file://" + imagePath;
         }
