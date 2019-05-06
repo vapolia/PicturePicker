@@ -29,7 +29,7 @@ namespace PicturePickerTests.Droid
             var path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.Create);
             var imagePath = Path.Combine(path, Guid.NewGuid().ToString("N") + ".jpg");
 
-            var picker = (IPicturePicker)Mvx.IoCConstruct<PicturePicker>();
+            var picker = (IPicturePicker)Mvx.IoCProvider.IoCConstruct<PicturePicker>();
             var ok = await picker.TakePicture(imagePath);
             if (ok)
                 ImagePath = "file://" + imagePath;
@@ -40,7 +40,7 @@ namespace PicturePickerTests.Droid
             var path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.Create);
             var imagePath = Path.Combine(path, Guid.NewGuid().ToString("N") + ".jpg");
 
-            var picker = (IPicturePicker)Mvx.IoCConstruct<PicturePicker>();
+            var picker = (IPicturePicker)Mvx.IoCProvider.IoCConstruct<PicturePicker>();
             var ok = await picker.ChoosePictureFromLibrary(imagePath);
             if (ok)
                 ImagePath = "file://" + imagePath;
@@ -50,7 +50,7 @@ namespace PicturePickerTests.Droid
         {
             var path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.Create);
 
-            var picker = (IMultiPicturePicker)Mvx.IoCConstruct<PicturePicker>();
+            var picker = (IMultiPicturePicker)Mvx.IoCProvider.IoCConstruct<PicturePicker>();
             var images = await picker.ChoosePicture(path);
             if (images.Count > 0)
                 ImagePath = "file://" + images[0];

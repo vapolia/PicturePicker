@@ -6,14 +6,15 @@
 
 #####set /p nugetServer=Enter base nuget server url (with /): 
 $nugetServer="http://nugets.vapolia.fr/"
-$msbuild = 'C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\MSBuild\15.0\Bin\MSBuild.exe'
-$version="3.1.0"
+$msbuild = 'C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\MSBuild\Current\Bin\MSBuild.exe'
 
 #####################
 #Build release config
+$version="3.1.1"
+$msbuildparams = '/t:Clean;Build', '/p:Configuration=Release', '/p:Platform=Any CPU', 'Vapolia.Mvvmcross.PicturePicker.sln'
+
 cd ..
 nuget restore
-$msbuildparams = '/t:Clean;Build', '/p:Configuration=Release', '/p:Platform=Any CPU', 'Vapolia.Mvvmcross.PicturePicker.sln'
 & $msbuild $msbuildparams
 cd nuget
 

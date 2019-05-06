@@ -47,7 +47,6 @@
     <Compile Include="Lib\JpegInfoService.cs" />
     <Compile Include="MultiPicturePicker.cs" />
     <Compile Include="PicturePicker.cs" />
-    <Compile Include="Plugin.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
