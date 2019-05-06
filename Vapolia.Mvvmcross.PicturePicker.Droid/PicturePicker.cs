@@ -11,9 +11,9 @@ using Android.Media;
 using Android.OS;
 using Android.Provider;
 using Uri = Android.Net.Uri;
-using Android.Runtime;
 using Android.Support.V4.Content;
 using Android.Util;
+using MvvmCross;
 using MvvmCross.Exceptions;
 using MvvmCross.Logging;
 using MvvmCross.Platforms.Android;
@@ -29,7 +29,7 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
         PickFromMultiFiles
     }
 
-    [Preserve(AllMembers = true)]
+    [Android.Runtime.Preserve(AllMembers = true)]
     public class PicturePicker : MvxAndroidTask, IPicturePicker, IMultiPicturePicker
     {
         private readonly IMvxLog log;
@@ -223,7 +223,12 @@ namespace Vapolia.Mvvmcross.PicturePicker.Droid
 
             currentRequestParameters = new RequestParameters(maxPixelWidth, maxPixelHeight, percentQuality, pictureAvailable, assumeCancelled);
             if (intent.ResolveActivity(androidGlobals.ApplicationContext.PackageManager) != null)
+            {
+                var topActivity = Mvx.IoCProvider.Resolve<IMvxAndroidCurrentTopActivity>().Activity;
+                if(topActivity == null)
+                    throw new MvxException("top activity is null");
                 StartActivityForResult((int) pickId, intent);
+            }
             else
                 assumeCancelled();
         }
