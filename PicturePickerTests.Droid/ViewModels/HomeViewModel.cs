@@ -5,10 +5,9 @@ using System.Windows.Input;
 using MvvmCross;
 using MvvmCross.Commands;
 using MvvmCross.ViewModels;
-using Vapolia.Mvvmcross.PicturePicker;
-using Vapolia.Mvvmcross.PicturePicker.Droid;
+using Vapolia.PicturePicker;
 
-namespace PicturePickerTests.Droid
+namespace PicturePickerTests.Droid.ViewModels
 {
     public class HomeViewModel : MvxViewModel
     {
@@ -26,34 +25,36 @@ namespace PicturePickerTests.Droid
 
         private async Task TakePicture()
         {
-            var path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.Create);
+            var pathBest = global::Android.App.Application.Context.GetExternalFilesDir(null);
+            var path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create);
             var imagePath = Path.Combine(path, Guid.NewGuid().ToString("N") + ".jpg");
 
-            var picker = (IPicturePicker)Mvx.IoCProvider.IoCConstruct<PicturePicker>();
-            var ok = await picker.TakePicture(imagePath);
+            var picker = (IPicturePicker)Mvx.IoCProvider.IoCConstruct<Vapolia.PicturePicker.PlatformLib.PicturePicker>();
+            var ok = await picker.TakePicture(imagePath, saveToGallery: true);
             if (ok)
                 ImagePath = "file://" + imagePath;
         }
 
-        private async Task PickPicture()
-        {
-            var path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.Create);
-            var imagePath = Path.Combine(path, Guid.NewGuid().ToString("N") + ".jpg");
-
-            var picker = (IPicturePicker)Mvx.IoCProvider.IoCConstruct<PicturePicker>();
-            var ok = await picker.ChoosePictureFromLibrary(imagePath);
-            if (ok)
-                ImagePath = "file://" + imagePath;
-        }
-
+        
         private async Task PickPictures()
         {
-            var path = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData, Environment.SpecialFolderOption.Create);
+            var path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create);
 
-            var picker = (IMultiPicturePicker)Mvx.IoCProvider.IoCConstruct<PicturePicker>();
+            var picker = (IMultiPicturePicker)Mvx.IoCProvider.IoCConstruct<Vapolia.PicturePicker.PlatformLib.PicturePicker>();
             var images = await picker.ChoosePicture(path);
             if (images.Count > 0)
                 ImagePath = "file://" + images[0];
+        }
+        
+        private async Task PickPicture()
+        {
+            var path = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create);
+            var imagePath = Path.Combine(path, Guid.NewGuid().ToString("N") + ".jpg");
+
+            var picker = (IPicturePicker)Mvx.IoCProvider.IoCConstruct<Vapolia.PicturePicker.PlatformLib.PicturePicker>();
+            var ok = await picker.ChoosePictureFromLibrary(imagePath);
+            if (ok)
+                ImagePath = "file://" + imagePath;
         }
     }
 }

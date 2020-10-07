@@ -1,0 +1,60 @@
+﻿<Project Sdk="MSBuild.Sdk.Extras/2.1.2">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;Xamarin.iOS10;MonoAndroid10.0</TargetFrameworks>
+    <AssemblyName>Vapolia.PicturePicker</AssemblyName>
+    <RootNamespace>Vapolia.PicturePicker</RootNamespace>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <DebugType>portable</DebugType>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Shared\**\*.cs" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="3.1.8" />
+    <PackageReference Include="Xamarin.Essentials" Version="1.5.3.2" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" $(TargetFramework.StartsWith('MonoAndroid')) ">
+    <Compile Include="Android\**\*.cs" />
+  </ItemGroup>
+  
+  <ItemGroup Condition=" $(TargetFramework.StartsWith('Xamarin.iOS')) ">
+    <Compile Include="Ios\**\*.cs" />
+  </ItemGroup>
+
+  <!--  nuget configurable properties -->
+  <PropertyGroup>
+    <Version>0.0.0-pre1</Version>
+    <VersionSuffix></VersionSuffix>
+    <DefineConstants>$(DefineConstants);</DefineConstants>
+  </PropertyGroup>
+
+  <!--  nuget properties -->
+  <PropertyGroup>
+    <PackageId>Vapolia.PicturePicker</PackageId>
+<!--    <PackageIconUrl>https://github.com/softlion/XamarinFormsGesture/favicon.ico</PackageIconUrl>-->
+    <Summary>Picture picker (photo or library) for iOS and Android (Mvvmcross plugin)</Summary>
+    <PackageTags>picture picker xamarin ios android forms mvvmcross mvvmlight</PackageTags>
+    <Title>Picture picker (photo or library) for Xamarin iOS and Android, Forms, Mvvmcross, Mvvmlight, or Native</Title>
+    <Description>Picture picker (photo or library) for Xamarin iOS and Android, Forms, Mvvmcross, Mvvmlight, or Native</Description>
+    <PackageLicenseUrl>https://vapolia.eu</PackageLicenseUrl>
+    <PackageVersion>$(Version)$(VersionSuffix)</PackageVersion>
+    <Product>PicturePicker</Product>
+    <Company>Vapolia</Company>
+    <Authors>Benjamin Mayrargue</Authors>
+    <Owners>https://vapolia.eu</Owners>
+    <NeutralLanguage>en</NeutralLanguage>
+    <Copyright>© 2016-2020 Vapolia</Copyright>
+    <RepositoryUrl>https://github.com/softlion/XamarinFormsGesture</RepositoryUrl>
+    <UseFullSemVerForNuGet>false</UseFullSemVerForNuGet>
+<!--    <PackageLicenseFile>LICENSE</PackageLicenseFile>-->
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageProjectUrl>https://github.com/softlion/XamarinFormsGesture</PackageProjectUrl>
+    <PackageReleaseNotes>
+      4.0.0: now framework independant!
+    </PackageReleaseNotes>
+  </PropertyGroup>
+
+</Project>

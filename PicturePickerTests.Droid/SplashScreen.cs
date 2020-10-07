@@ -1,7 +1,9 @@
 ﻿using Android.App;
 using Android.Content.PM;
+using Android.OS;
 using MvvmCross.Platforms.Android.Core;
 using MvvmCross.Platforms.Android.Views;
+using Xamarin.Essentials;
 
 namespace PicturePickerTests.Droid
 {
@@ -15,6 +17,12 @@ namespace PicturePickerTests.Droid
 	{
 	    public SplashScreen() : base(Resource.Layout.splashscreen)
 	    {
+	    }
+
+	    protected override void OnCreate(Bundle bundle)
+	    {
+		    base.OnCreate(bundle);
+		    Platform.Init(this, bundle);
 	    }
 	}
 }
