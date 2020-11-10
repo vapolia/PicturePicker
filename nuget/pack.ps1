@@ -9,14 +9,14 @@ if ($IsMacOS) {
 #####################
 #Build release config
 $version="4.0.0"
-$versionSuffix="-pre1"
+$versionSuffix="-pre4"
 $nugetVersion="$version$versionSuffix"
 
 del *.nupkg
-& $msbuild "../Vapolia.Mvvmcross.PicturePicker.sln" /restore /p:Configuration=Release /p:Platform="Any CPU" /p:Version="$version" /p:VersionSuffix="$versionSuffix" /p:Deterministic=false /p:PackageOutputPath="$PSScriptRoot" --% /t:Clean;Build;Pack
+& $msbuild "../Vapolia.PicturePicker.sln" /restore /p:Configuration=Release /p:Platform="Any CPU" /p:Version="$version" /p:VersionSuffix="$versionSuffix" /p:Deterministic=false /p:PackageOutputPath="$PSScriptRoot" --% /t:Clean;Build;Pack
 if ($lastexitcode -ne 0) { exit $lastexitcode; }
 
 ####################
 # PUSH
 $nugetServer="https://nugets.vapolia.fr/"
-#dotnet nuget push "Vapolia.Mvvmcross.PicturePicker*.nupkg" -Source $nugetServer
+dotnet nuget push "Vapolia.PicturePicker*.nupkg" -Source $nugetServer

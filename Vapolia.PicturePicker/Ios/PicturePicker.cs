@@ -9,28 +9,105 @@ using Microsoft.Extensions.Logging;
 using MobileCoreServices;
 using Photos;
 using UIKit;
+using Xamarin.Essentials;
 
 namespace Vapolia.PicturePicker.PlatformLib
 {
     [Preserve(AllMembers = true)]
-    public sealed class PicturePicker : IPicturePicker, IDisposable
+    public sealed class PicturePicker : IPicturePicker
     {
         private readonly ILogger log;
-        private readonly UIImagePickerController picker;
         // ReSharper disable InconsistentNaming
         private int _maxPixelWidth, _maxPixelHeight;
         private int _percentQuality;
         private string _filePath;
         // ReSharper restore InconsistentNaming
-        private Action<Task<bool>> savingTaskAction;
-        private TaskCompletionSource<bool> tcs;
+        private TaskCompletionSource<bool>? tcs;
         private bool shouldSaveToGallery;
+
+        public bool HasCamera => UIImagePickerController.IsSourceTypeAvailable(UIImagePickerControllerSourceType.Camera)
+                                 || UIImagePickerController.IsCameraDeviceAvailable(UIImagePickerControllerCameraDevice.Front)
+                                 || UIImagePickerController.IsCameraDeviceAvailable(UIImagePickerControllerCameraDevice.Rear);
 
         public PicturePicker(ILogger logger)
         {
             log = logger;
+        }
 
-            picker = new UIImagePickerController();
+        public Task<bool> ChoosePictureFromLibrary(string filePath, Action<Task<bool>>? saving = null, int maxPixelWidth=0, int maxPixelHeight=0, int percentQuality = 80)
+        {
+            var picker = CreatePicker(saving);
+            picker.SourceType = UIImagePickerControllerSourceType.PhotoLibrary;
+            picker.AllowsEditing = true;
+            picker.AllowsImageEditing = true;
+            shouldSaveToGallery = false;
+            return ChoosePictureCommon(picker, filePath, maxPixelWidth, maxPixelHeight, percentQuality);
+        }
+
+        public Task<bool> TakePicture(string filePath, Action<Task<bool>>? saving = null, int maxPixelWidth=0, int maxPixelHeight=0, int percentQuality = 0, bool useFrontCamera=false, bool saveToGallery=false, CancellationToken cancel = default)
+        {
+            if (!HasCamera)
+            {
+                log.LogWarning("Source type Camera not available on this device.");
+                return Task.FromResult(false);
+            }
+
+            var camera = useFrontCamera ? UIImagePickerControllerCameraDevice.Front : UIImagePickerControllerCameraDevice.Rear;
+            if (!UIImagePickerController.IsCameraDeviceAvailable(camera))
+            {
+                camera = useFrontCamera ? UIImagePickerControllerCameraDevice.Rear : UIImagePickerControllerCameraDevice.Front;
+                if (!UIImagePickerController.IsCameraDeviceAvailable(camera))
+                {
+                    log.LogWarning("No camera available on this device.");
+                    return Task.FromResult(false);
+                }
+            }
+
+            var picker = CreatePicker(saving);
+            shouldSaveToGallery = saveToGallery;
+            picker.SourceType = UIImagePickerControllerSourceType.Camera;
+            picker.CameraCaptureMode = UIImagePickerControllerCameraCaptureMode.Photo;
+            picker.CameraDevice = useFrontCamera ? UIImagePickerControllerCameraDevice.Front : UIImagePickerControllerCameraDevice.Rear;
+            picker.AllowsEditing = false;
+            picker.AllowsImageEditing = false;
+            picker.Editing = false;
+            return ChoosePictureCommon(picker, filePath, maxPixelWidth, maxPixelHeight, percentQuality);
+        }
+
+        private async Task<bool> ChoosePictureCommon(UIImagePickerController picker, string filePath, int maxPixelWidth, int maxPixelHeight, int percentQuality)
+        {
+            if (tcs != null)
+            {
+                log.LogError("PicturePicker: A call is already in progress");
+                return false;
+            }
+
+            var modalHost = MultiPicturePicker.GetTopModalHostViewController();
+            if (modalHost == null)
+            {
+                log.LogError("ChoosePicture no modal host available to push this viewcontroller");
+                return false;
+            }
+
+            _maxPixelWidth = maxPixelWidth;
+            _maxPixelHeight = maxPixelHeight;
+            _percentQuality = percentQuality;
+            _filePath = filePath;
+
+            if (DeviceInfo.Idiom == DeviceIdiom.Tablet && picker.PopoverPresentationController != null && modalHost.View != null)
+                picker.PopoverPresentationController.SourceRect = modalHost.View.Bounds;
+            
+            tcs = new TaskCompletionSource<bool>();
+            await modalHost.PresentViewControllerAsync(picker, true);
+            var ok = await tcs.Task;
+            tcs = null;
+            picker.Dispose();
+            return ok;
+        }
+
+        private UIImagePickerController CreatePicker(Action<Task<bool>>? saving = null)
+        {
+            var picker = new UIImagePickerController();
 
             picker.FinishedPickingMedia += async (sender, args) =>
             {
@@ -65,16 +142,26 @@ namespace Vapolia.PicturePicker.PlatformLib
                 else
                 {
                     var data = image.AsJPEG((float)(_percentQuality / 100.0));
-                    using (var stream = data.AsStream())
-                    {
-                        var info = new JpegInfoService(stream);
-                        var lat = info.GpsLatitude;
-                        var lng = info.GpsLongitude;
-                    }
+                    await using var stream = data.AsStream();
+                    var info = new JpegInfoService(stream);
+                    var lat = info.GpsLatitude;
+                    var lng = info.GpsLongitude;
                 }
 #endif
 
-                await HandleImagePick(image, metadata);
+                var saved = await HandleImagePick(image, metadata, saving);
+
+                
+                NSThread.MainThread.InvokeOnMainThread(() =>
+                {
+                    picker.DismissViewController(true, () =>
+                    {
+                        //Fix still image problem when used twice on iOS 7
+                        GC.Collect();
+
+                        tcs?.TrySetResult(saved);
+                    });
+                });
             };
 
             //Obsolete
@@ -87,84 +174,57 @@ namespace Vapolia.PicturePicker.PlatformLib
             {
                 await picker.DismissViewControllerAsync(true);
                 //picker.Dispose();
-                tcs.SetResult(false);
-                tcs = null;
+                tcs?.TrySetResult(false);
             };
-        }
 
-        public bool HasCamera => UIImagePickerController.IsSourceTypeAvailable(UIImagePickerControllerSourceType.Camera)
-                        || UIImagePickerController.IsCameraDeviceAvailable(UIImagePickerControllerCameraDevice.Front)
-                        || UIImagePickerController.IsCameraDeviceAvailable(UIImagePickerControllerCameraDevice.Rear);
-
-        public Task<bool> ChoosePictureFromLibrary(string filePath, Action<Task<bool>> saving = null, int maxPixelWidth=0, int maxPixelHeight=0, int percentQuality = 80)
-        {
-            savingTaskAction = saving;
-            picker.SourceType = UIImagePickerControllerSourceType.PhotoLibrary;
-            picker.AllowsEditing = true;
-            picker.AllowsImageEditing = true;
-            shouldSaveToGallery = false;
-            return ChoosePictureCommon(filePath, maxPixelWidth, maxPixelHeight, percentQuality);
-        }
-
-        public Task<bool> TakePicture(string filePath, Action<Task<bool>> saving = null, int maxPixelWidth=0, int maxPixelHeight=0, int percentQuality = 0, bool useFrontCamera=false, bool saveToGallery=false, CancellationToken cancel = default)
-        {
-            if (!HasCamera)
+            //iOS 13 only
+            if (DeviceInfo.Version.Major >= 13)
             {
-                log.LogWarning("Source type Camera not available on this device.");
-                return Task.FromResult(false);
-            }
-
-            var camera = useFrontCamera ? UIImagePickerControllerCameraDevice.Front : UIImagePickerControllerCameraDevice.Rear;
-            if (!UIImagePickerController.IsCameraDeviceAvailable(camera))
-            {
-                camera = useFrontCamera ? UIImagePickerControllerCameraDevice.Rear : UIImagePickerControllerCameraDevice.Front;
-                if (!UIImagePickerController.IsCameraDeviceAvailable(camera))
+                var ad = new ModalDelegate();
+                ad.Dismissed += (sender, args) =>
                 {
-                    log.LogWarning("No camera available on this device.");
-                    return Task.FromResult(false);
-                }
+                    tcs?.TrySetResult(false);
+                };
+                picker.PresentationController.Delegate = ad;
             }
 
-            savingTaskAction = saving;
-            shouldSaveToGallery = saveToGallery;
-            picker.SourceType = UIImagePickerControllerSourceType.Camera;
-            picker.CameraCaptureMode = UIImagePickerControllerCameraCaptureMode.Photo;
-            picker.CameraDevice = useFrontCamera ? UIImagePickerControllerCameraDevice.Front : UIImagePickerControllerCameraDevice.Rear;
-            picker.AllowsEditing = false;
-            picker.AllowsImageEditing = false;
-            picker.Editing = false;
-            return ChoosePictureCommon(filePath, maxPixelWidth, maxPixelHeight, percentQuality);
+            return picker;
         }
 
-        private async Task<bool> ChoosePictureCommon(string filePath, int maxPixelWidth, int maxPixelHeight, int percentQuality)
+        class ModalDelegate : UIAdaptivePresentationControllerDelegate
         {
-            if (tcs != null)
+            public event EventHandler<EventArgs> Dismissed; 
+            
+            //Default is to dismiss. Comment this out to prevent default.
+            // public override void DidAttemptToDismiss(UIPresentationController presentationController)
+            // {
+            //     
+            // }
+
+            /// <summary>
+            /// Called when dismiss 
+            /// </summary>
+            /// <param name="presentationController"></param>
+            /// <returns>false to prevent dismissal</returns>
+            public override bool ShouldDismiss(UIPresentationController presentationController)
             {
-                log.LogError("PicturePicker: A call is already in progress");
-                return false;
+                return true;
             }
 
-            var modalHost = MultiPicturePicker.GetTopModalHostViewController();
-            if (modalHost == null)
+
+            public override void DidDismiss(UIPresentationController presentationController)
             {
-                log.LogError("ChoosePicture no modal host available to push this viewcontroller");
-                return false;
+                Dismissed?.Invoke(this, EventArgs.Empty);
             }
 
-            tcs = new TaskCompletionSource<bool>();
-
-            _maxPixelWidth = maxPixelWidth;
-            _maxPixelHeight = maxPixelHeight;
-            _percentQuality = percentQuality;
-            _filePath = filePath;
-
-            await modalHost.PresentViewControllerAsync(picker, true);
-            return await tcs.Task;
+            public override void WillDismiss(UIPresentationController presentationController)
+            {
+            }
         }
 
-        private async Task HandleImagePick(UIImage image, NSDictionary metadata)
+        private async Task<bool> HandleImagePick(UIImage? image, NSDictionary? metadata, Action<Task<bool>>? savingTaskAction)
         {
-            string imageFile = null;
+            string? imageFile = null;
             if (image != null)
             {
                 var tcsSaving = new TaskCompletionSource<bool>();
@@ -215,27 +275,7 @@ namespace Vapolia.PicturePicker.PlatformLib
                 }
             }
 
-            NSThread.MainThread.InvokeOnMainThread(() =>
-            {
-                picker.DismissViewController(true, () =>
-                {
-                    //picker.Dispose();
-                    //Fix still image problem when used twice on iOS 7
-                    GC.Collect();
-
-                    if (imageFile != null)
-                        tcs.SetResult(true);
-                    else
-                        tcs.SetResult(false);
-                    tcs = null;
-                });
-            });
-        }
-
-        public void Dispose()
-        {
-            picker?.Dispose();
-            savingTaskAction = null;
+            return imageFile != null;
         }
     }
 }

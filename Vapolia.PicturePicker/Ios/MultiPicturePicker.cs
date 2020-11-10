@@ -180,20 +180,78 @@ namespace Vapolia.PicturePicker.PlatformLib
         /// car GetTopModalHostViewController peux renvoyer un controlleur modal ...
         /// car KeyWindow est une UIAlert window avec un WindowLevel à 200
         /// </summary>
-        internal static UIViewController GetTopModalHostViewController()
+        internal static UIViewController? GetTopModalHostViewController()
         {
-            var window = UIApplication.SharedApplication.Windows.LastOrDefault(w => w.WindowLevel == UIWindowLevel.Normal);
-            if (window == null)
-                return null;
+            return GetCurrentViewController(false);
+            //return Xamarin.Essentials.Platform.GetCurrentViewController(true);
 
-            var uiViewController = window.RootViewController;
-            do
-            {
-                if (uiViewController.PresentedViewController is UINavigationController)
-                    uiViewController = uiViewController.PresentedViewController;
-            }
-            while (uiViewController.PresentedViewController != null);
-            return uiViewController;
+            // var window = UIApplication.SharedApplication.Windows.LastOrDefault(w => w.WindowLevel == UIWindowLevel.Normal);
+            // if (window == null)
+            //     return null;
+            //
+            // var uiViewController = window.RootViewController;
+            // do
+            // {
+            //     if (uiViewController.PresentedViewController is UINavigationController)
+            //         uiViewController = uiViewController.PresentedViewController;
+            // }
+            // while (uiViewController.PresentedViewController != null);
+            //
+            // return uiViewController;
         }
+        
+        #region From Xamarin.Essentials
+        private static UIViewController GetCurrentViewController(bool throwIfNull = true)
+        {
+            UIViewController viewController = null;
+
+            var window = UIApplication.SharedApplication.KeyWindow;
+
+            if (window != null && window.WindowLevel == UIWindowLevel.Normal)
+                viewController = window.RootViewController;
+
+            if (viewController == null)
+            {
+                window = UIApplication.SharedApplication
+                    .Windows
+                    .OrderByDescending(w => w.WindowLevel)
+                    .FirstOrDefault(w => w.RootViewController != null && w.WindowLevel == UIWindowLevel.Normal);
+
+                if (window == null && throwIfNull)
+                    throw new InvalidOperationException("Could not find current view controller.");
+                else
+                    viewController = window?.RootViewController;
+            }
+
+            while (viewController?.PresentedViewController != null)
+                viewController = viewController.PresentedViewController;
+
+            if (throwIfNull && viewController == null)
+                throw new InvalidOperationException("Could not find current view controller.");
+
+            return viewController;
+        }
+
+        private static UIWindow GetCurrentWindow(bool throwIfNull = true)
+        {
+            var window = UIApplication.SharedApplication.KeyWindow;
+
+            if (window != null && window.WindowLevel == UIWindowLevel.Normal)
+                return window;
+
+            if (window == null)
+            {
+                window = UIApplication.SharedApplication
+                    .Windows
+                    .OrderByDescending(w => w.WindowLevel)
+                    .FirstOrDefault(w => w.RootViewController != null && w.WindowLevel == UIWindowLevel.Normal);
+            }
+
+            if (throwIfNull && window == null)
+                throw new InvalidOperationException("Could not find current window.");
+
+            return window;
+        }
+        #endregion
     }
 }

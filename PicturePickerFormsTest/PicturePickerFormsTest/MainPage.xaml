@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:local="clr-namespace:PicturePickerFormsTest"
+             x:Class="PicturePickerFormsTest.MainPage"
+             x:DataType="local:MainPageViewModel">
+
+    <StackLayout Margin="30,50,30,30">
+        
+        <Button Text="Tap to open picture library" Command="{Binding OpenPictureLibraryCommand}" />
+
+        <Image Source="{Binding ImagePath}" />
+    </StackLayout>
+
+</ContentPage>
