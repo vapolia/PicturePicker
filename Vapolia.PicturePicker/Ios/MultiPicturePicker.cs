@@ -166,8 +166,10 @@ namespace Vapolia.PicturePicker.PlatformLib
             var metadata = await tcs0.Task;
             var image = await tcs.Task;
 
-            var imageDestination = CGImageDestination.Create(new CGDataConsumer(NSUrl.FromFilename(filePath)), UTType.JPEG, 1, new CGImageDestinationOptions {LossyCompressionQuality = (float) (options.PercentQuality / 100.0)});
-            imageDestination.AddImage(image.CGImage, metadata);
+            var imageDestination = CGImageDestination.Create(new CGDataConsumer(NSUrl.FromFilename(filePath)), UTType.JPEG, 1, new CGImageDestinationOptions {LossyCompressionQuality = (float) (options.PercentQuality / 100.0) });
+            metadata = PicturePicker.FixOrientationMetadata(metadata);
+            var cgImage = PicturePicker.FixOrientation(image);
+            imageDestination.AddImage(cgImage, metadata);
             if (!imageDestination.Close()) //Dispose is called by Close ...
                 log.LogError($"MultiPicturePicker: failed to save photo to {filePath}");
 

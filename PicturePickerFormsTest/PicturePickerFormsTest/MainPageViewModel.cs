@@ -14,6 +14,8 @@ namespace PicturePickerFormsTest
         private string imagePath;
 
         public ICommand OpenPictureLibraryCommand { get; }
+        public ICommand OpenCameraCommand { get; }
+        public bool HasCamera => AdvancedMediaPicker.HasCamera;
 
         public string ImagePath
         {
@@ -39,6 +41,27 @@ namespace PicturePickerFormsTest
                 }
                 else
                     ok = await AdvancedMediaPicker.ChoosePictureFromLibrary(targetFile, maxPixelWidth: 500, maxPixelHeight: 500);
+
+                if (ok)
+                    ImagePath = targetFile;
+            });
+
+            OpenCameraCommand = new Command(async () =>
+            {
+                bool ok = false;
+                var pictureCacheFolder = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var targetFile = Path.Combine(pictureCacheFolder, $"profilePic-{Guid.NewGuid()}.jpg");
+
+                var hasPermission = await Permissions.CheckStatusAsync<Permissions.Camera>();
+                if(hasPermission != PermissionStatus.Granted && hasPermission != PermissionStatus.Restricted)
+                    hasPermission = await Permissions.RequestAsync<Permissions.Camera>();
+                if (hasPermission != PermissionStatus.Granted && hasPermission != PermissionStatus.Restricted)
+                {
+                    if(await page.DisplayAlert("Denied", "You denied access to your camera.", "Open Settings", "OK"))
+                        AppInfo.ShowSettingsUI();
+                }
+                else
+                    ok = await AdvancedMediaPicker.TakePicture(targetFile, maxPixelWidth: 500, maxPixelHeight: 500);
 
                 if (ok)
                     ImagePath = targetFile;

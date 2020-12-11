@@ -118,7 +118,7 @@ namespace Vapolia.PicturePicker.PlatformLib
                 {
                     //Requiert l'acces à la photo lib
                     //var asset = args.PHAsset; //ios11+
-                    var asset = (PHAsset)PHAsset.FetchAssets( new [] { args.ReferenceUrl ?? args.ImageUrl ?? args.MediaUrl }, new PHFetchOptions() { IncludeAssetSourceTypes = PHAssetSourceType.UserLibrary|PHAssetSourceType.iTunesSynced|PHAssetSourceType.CloudShared }).firstObject; //ios8-10
+                    var asset = (PHAsset?)PHAsset.FetchAssets( new [] { args.ReferenceUrl ?? args.ImageUrl ?? args.MediaUrl }, new PHFetchOptions { IncludeAssetSourceTypes = PHAssetSourceType.UserLibrary|PHAssetSourceType.iTunesSynced|PHAssetSourceType.CloudShared }).firstObject; //ios8-10
 
                     if (asset != null)
                     {
@@ -242,12 +242,15 @@ namespace Vapolia.PicturePicker.PlatformLib
                     // resize the image
                     if (_maxPixelWidth > 0 || _maxPixelHeight > 0)
                         image = image.ImageToFitSize(new CGSize(_maxPixelWidth, _maxPixelHeight));
-
+                    
                     if (File.Exists(_filePath))
                         File.Delete(_filePath);
 
+                    // rotate the CgImage if the orientation is not already good
                     var imageDestination = CGImageDestination.Create(new CGDataConsumer(NSUrl.FromFilename(_filePath)), UTType.JPEG, 1, new CGImageDestinationOptions {LossyCompressionQuality = (float) (_percentQuality / 100.0)});
-                    imageDestination.AddImage(image.CGImage, metadata);
+                    metadata = FixOrientationMetadata(metadata);
+                    var cgImage = FixOrientation(image);
+                    imageDestination.AddImage(cgImage, metadata);
                     if (!imageDestination.Close()) //Dispose is called by Close ...
                         log.LogError("PicturePicker: failed to copy photo on save to {0}", _filePath);
                     else
@@ -276,6 +279,97 @@ namespace Vapolia.PicturePicker.PlatformLib
             }
 
             return imageFile != null;
+        }
+
+        internal static NSDictionary FixOrientationMetadata(NSDictionary metadata)
+        {
+            if (metadata.TryGetValue(new NSString("Orientation"), out var orientation))
+            {
+                metadata = (NSMutableDictionary)metadata.MutableCopy();
+
+                metadata["Orientation"] = new NSNumber(1);
+                if (metadata.TryGetValue(new NSString("{TIFF}"), out var tiff))
+                {
+                    var tiffDic = (NSDictionary)tiff;
+                    if (tiffDic.TryGetValue(new NSString("Orientation"), out orientation))
+                    {
+                        var tiffDicMutable = (NSMutableDictionary)tiffDic.MutableCopy();
+                        tiffDicMutable["Orientation"] = new NSNumber(1);
+                        metadata["{TIFF}"] = tiffDicMutable;
+                    }
+                }
+            }
+
+            return metadata;
+        }
+
+        internal static CGImage FixOrientation(UIImage image)
+        {
+            var orientation = image.Orientation;
+            if (orientation == UIImageOrientation.Up)
+                return image.CGImage;
+
+            // We need to calculate the proper transformation to make the image upright.
+            // We do it in 2 steps: Rotate if Left/Right/Down, and then flip if Mirrored.
+            var transform = CGAffineTransform.MakeIdentity();
+            var size = image.Size;
+            switch (orientation) 
+            {
+                case UIImageOrientation.Down:
+                case UIImageOrientation.DownMirrored:
+                    transform = CGAffineTransform.Translate(transform, size.Width, size.Height);
+                    transform = CGAffineTransform.Rotate(transform, (nfloat)Math.PI);
+                    break;
+
+                case UIImageOrientation.Left:
+                case UIImageOrientation.LeftMirrored:
+                    transform = CGAffineTransform.Translate(transform, size.Width, 0);
+                    transform = CGAffineTransform.Rotate(transform, (nfloat)Math.PI/2);
+                    break;
+
+                case UIImageOrientation.Right:
+                case UIImageOrientation.RightMirrored:
+                    transform = CGAffineTransform.Translate(transform, 0, size.Height);
+                    transform = CGAffineTransform.Rotate(transform, (nfloat)(-Math.PI/2));
+                    break;
+            }
+
+            switch (orientation) 
+            {
+                case UIImageOrientation.UpMirrored:
+                case UIImageOrientation.DownMirrored:
+                    transform = CGAffineTransform.Translate(transform, size.Width, 0);
+                    transform = CGAffineTransform.Scale(transform, -1, 1);
+                    break;
+
+                case UIImageOrientation.LeftMirrored:
+                case UIImageOrientation.RightMirrored:
+                    transform = CGAffineTransform.Translate(transform, size.Height, 0);
+                    transform = CGAffineTransform.Scale(transform, -1, 1);
+                    break;
+            }
+            
+            // Now we draw the underlying CGImage into a new context, applying the transform calculated above.
+            var ctx = new CGBitmapContext(null, (nint)size.Width, (nint)size.Height, image.CGImage.BitsPerComponent, 0, image.CGImage.ColorSpace, image.CGImage.BitmapInfo);
+            ctx.ConcatCTM(transform);
+            switch (orientation) 
+            {
+                case UIImageOrientation.Left:
+                case UIImageOrientation.LeftMirrored:
+                case UIImageOrientation.Right:
+                case UIImageOrientation.RightMirrored:
+                    // Grr...
+                    ctx.DrawImage(new CGRect(0,0,size.Height,size.Width), image.CGImage);
+                    break;
+
+                default:
+                    ctx.DrawImage(new CGRect(0,0,size.Width,size.Height), image.CGImage);
+                    break;
+            }
+
+            var cgimg = ctx.ToImage();
+            ctx.Dispose();
+            return cgimg;
         }
     }
 }

@@ -9,7 +9,7 @@ if ($IsMacOS) {
 #####################
 #Build release config
 $version="4.0.0"
-$versionSuffix="-pre4"
+$versionSuffix="-pre7"
 $nugetVersion="$version$versionSuffix"
 
 del *.nupkg

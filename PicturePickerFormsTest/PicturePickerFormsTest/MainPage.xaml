@@ -2,12 +2,16 @@
 <ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:PicturePickerFormsTest"
+             xmlns:iOsSpecific="clr-namespace:Xamarin.Forms.PlatformConfiguration.iOSSpecific;assembly=Xamarin.Forms.Core"
              x:Class="PicturePickerFormsTest.MainPage"
-             x:DataType="local:MainPageViewModel">
+             x:DataType="local:MainPageViewModel"
+             iOsSpecific:Page.UseSafeArea="True"
+             >
 
-    <StackLayout Margin="30,50,30,30">
+    <StackLayout Margin="30,50,30,30" Spacing="10">
         
-        <Button Text="Tap to open picture library" Command="{Binding OpenPictureLibraryCommand}" />
+        <Button Text="Open picture library" Command="{Binding OpenPictureLibraryCommand}" FontSize="Body" />
+        <Button Text="Open camera" Command="{Binding OpenCameraCommand}" FontSize="Body" IsVisible="{Binding HasCamera}" />
 
         <Image Source="{Binding ImagePath}" />
     </StackLayout>
