@@ -6,6 +6,8 @@ using Android.Views;
 using Android.Widget;
 using Android.OS;
 
+[assembly: UsesPermission(Android.Manifest.Permission.Camera)]
+
 namespace PicturePickerFormsTest.Android
 {
     [Activity(Label = "PicturePickerFormsTest", Theme = "@style/MainTheme", MainLauncher = true, ConfigurationChanges = ConfigChanges.ScreenSize | ConfigChanges.Orientation)]

@@ -13,7 +13,7 @@ namespace PicturePickerTests.Droid
         , MainLauncher = true
         , NoHistory = true
         , ScreenOrientation = ScreenOrientation.Portrait)]
-	public class SplashScreen : MvxSplashScreenActivity<MvxAndroidSetup<App>, App>
+	public class SplashScreen : MvxSplashScreenActivity
 	{
 	    public SplashScreen() : base(Resource.Layout.splashscreen)
 	    {
