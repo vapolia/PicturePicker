@@ -8,7 +8,7 @@ if ($IsMacOS) {
 
 #####################
 #Build release config
-$version="4.0.0"
+$version="4.0.1"
 $versionSuffix=""
 $nugetVersion="$version$versionSuffix"
 
@@ -18,5 +18,5 @@ if ($lastexitcode -ne 0) { exit $lastexitcode; }
 
 ####################
 # PUSH
-$nugetServer="https://nugets.vapolia.fr/"
-dotnet nuget push "Vapolia.PicturePicker*.nupkg" -Source $nugetServer
+#$nugetServer="https://nugets.vapolia.fr/"
+#dotnet nuget push "Vapolia.PicturePicker*.nupkg" -Source $nugetServer

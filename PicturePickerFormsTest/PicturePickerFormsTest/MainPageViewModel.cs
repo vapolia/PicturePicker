@@ -11,13 +11,13 @@ namespace PicturePickerFormsTest
 {
     public class MainPageViewModel : INotifyPropertyChanged
     {
-        private string imagePath;
+        private ImageSource imagePath;
 
         public ICommand OpenPictureLibraryCommand { get; }
         public ICommand OpenCameraCommand { get; }
         public bool HasCamera => AdvancedMediaPicker.HasCamera;
 
-        public string ImagePath
+        public ImageSource ImagePath
         {
             get => imagePath;
             set { imagePath = value; OnPropertyChanged(nameof(ImagePath)); }
@@ -43,7 +43,7 @@ namespace PicturePickerFormsTest
                     ok = await AdvancedMediaPicker.ChoosePictureFromLibrary(targetFile, maxPixelWidth: 500, maxPixelHeight: 500);
 
                 if (ok)
-                    ImagePath = targetFile;
+                    ImagePath = new FileImageSource { File = targetFile };
             });
 
             OpenCameraCommand = new Command(async () =>
@@ -63,8 +63,16 @@ namespace PicturePickerFormsTest
                 else
                     ok = await AdvancedMediaPicker.TakePicture(targetFile, maxPixelWidth: 500, maxPixelHeight: 500);
 
+                
                 if (ok)
-                    ImagePath = targetFile;
+                    ImagePath = new StreamImageSource
+                    {
+                        Stream = async cancel =>
+                        {
+                            var bytes = File.ReadAllBytes(targetFile);
+                            return new MemoryStream(bytes);
+                        }
+                    };            
             });
         }
 

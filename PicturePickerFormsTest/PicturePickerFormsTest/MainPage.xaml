@@ -8,12 +8,12 @@
              iOsSpecific:Page.UseSafeArea="True"
              >
 
-    <StackLayout Margin="30,50,30,30" Spacing="10">
+    <StackLayout Margin="30,50,30,30" Spacing="10" BackgroundColor="Yellow">
         
         <Button Text="Open picture library" Command="{Binding OpenPictureLibraryCommand}" FontSize="Body" />
         <Button Text="Open camera" Command="{Binding OpenCameraCommand}" FontSize="Body" IsVisible="{Binding HasCamera}" />
 
-        <Image Source="{Binding ImagePath}" />
+        <Image Source="{Binding ImagePath}" BackgroundColor="Red" />
     </StackLayout>
 
 </ContentPage>

@@ -43,8 +43,18 @@ namespace Vapolia.PicturePicker.PlatformLib
         public async Task<bool> ChoosePictureFromLibrary(string filePath, Action<Task<bool>>? saving = null, int maxPixelWidth = 0, int maxPixelHeight = 0, int percentQuality = 80)
         {
             shouldSaveToGallery = false;
-            var intent = new Intent(Intent.ActionGetContent);
-            intent.SetType("image/*");
+            // var intent = new Intent(Intent.ActionGetContent)
+            //             .SetType("image/*");
+            //             //.AddFlags(ActivityFlags.GrantReadUriPermission);
+            //             //.AddFlags(ActivityFlags.GrantPersistableUriPermission);
+
+            var intent = new Intent(Intent.ActionOpenDocument) //,MediaStore.Images.Media.ExternalContentUri
+                .AddCategory(Intent.CategoryOpenable)
+                .SetType("image/*")
+                .PutExtra(Intent.ExtraAllowMultiple, false)
+                .AddFlags(ActivityFlags.GrantReadUriPermission);
+
+                        
             var tcs = new TaskCompletionSource<bool>();
 
             async Task PictureAvailable(Stream stream)
@@ -75,7 +85,8 @@ namespace Vapolia.PicturePicker.PlatformLib
             var intent = new Intent(Intent.ActionOpenDocument) //,MediaStore.Images.Media.ExternalContentUri
                 .AddCategory(Intent.CategoryOpenable)
                 .SetType("image/*")
-                .PutExtra(Intent.ExtraAllowMultiple, true);
+                .PutExtra(Intent.ExtraAllowMultiple, true)
+                .AddFlags(ActivityFlags.GrantReadUriPermission);
 
             async Task NewPictureAvailable(Stream stream)
             {
@@ -130,11 +141,17 @@ namespace Vapolia.PicturePicker.PlatformLib
 
             async Task PictureAvailable(Stream stream)
             {
-                //Assert(stream == Stream.Null)
-
                 try
                 {
-                    File.Move(pathForFileProvider, filePath);
+                    if(stream == Stream.Null)
+                        File.Move(pathForFileProvider, filePath);
+                    else
+                    {
+                        await using var fs = File.Create(filePath);
+                        await stream.CopyToAsync(fs, cancel).ConfigureAwait(false);
+                        if(File.Exists(pathForFileProvider))
+                            File.Delete(pathForFileProvider);
+                    }
 
                     if (shouldSaveToGallery)
                     {
@@ -254,14 +271,14 @@ namespace Vapolia.PicturePicker.PlatformLib
                     AssumeCancelled();
                 else
                 {
-                    ProcessIntentResult(t.Result, pickId, currentRequestParameters, AssumeCancelled); 
+                    ProcessIntentResult(t.Result, pickId, currentRequestParameters, AssumeCancelled, extraOutputPath); 
                 }
             });
 
             return await tcs.Task;
         }
 
-        private void ProcessIntentResult(Intent? data, PicturePickerIntentRequestCode pickId, RequestParameters currentRequestParameters, Action assumeCancelled)
+        private void ProcessIntentResult(Intent? data, PicturePickerIntentRequestCode pickId, RequestParameters currentRequestParameters, Action assumeCancelled, string? extraOutputPath)
         {
             //thumbnail !
             //var thumbnail = (Bitmap)result.Data.Extras.Get("data"); 
@@ -275,7 +292,7 @@ namespace Vapolia.PicturePicker.PlatformLib
                 case PicturePickerIntentRequestCode.PickFromCamera:
                     //data?.Data = bitmap thumbnail
                     //uri = photoUri;
-                    uri = Uri.Empty;
+                    uri = extraOutputPath != null ? Uri.FromFile(new Java.IO.File(extraOutputPath)) : Uri.Empty;
                     break;
                 case PicturePickerIntentRequestCode.PickFromMultiFiles:
                     if (data?.ClipData?.ItemCount > 0 || data?.Data != null)
@@ -321,7 +338,6 @@ namespace Vapolia.PicturePicker.PlatformLib
                 currentRequestParameters.PictureAvailable(Stream.Null);
             else if (uri != null)
             {
-
                 //Do heavy work in a worker thread
                 Task.Run(async () =>
                 {
@@ -344,7 +360,7 @@ namespace Vapolia.PicturePicker.PlatformLib
             }
 
             log.LogTrace("Loading InMemoryBitmap started...");
-            var memoryStream = LoadInMemoryBitmap(uri, currentRequestParameters);
+            var memoryStream = await LoadInMemoryBitmap(uri, currentRequestParameters);
             if (memoryStream == null)
             {
                 log.LogTrace("Loading InMemoryBitmap failed...");
@@ -357,130 +373,138 @@ namespace Vapolia.PicturePicker.PlatformLib
             return true;
         }
 
-        private MemoryStream? LoadInMemoryBitmap(Uri uri, RequestParameters currentRequestParameters)
+        private async Task<MemoryStream?> LoadInMemoryBitmap(Uri uri, RequestParameters currentRequestParameters)
         {
             var memoryStream = new MemoryStream();
-            var bitmap = LoadScaledBitmap(uri, currentRequestParameters);
+            var bitmap = LoadScaledBitmap();
             if (bitmap == null)
                 return null;
 
             if (shouldSaveToGallery)
             {
-                MediaStore.Images.Media.InsertImage(applicationContext.ContentResolver, bitmap, $"{DateTime.Now.ToString("O").Replace(':','-').Replace('.','-').Replace('T',' ')}", "");
+                MediaStore.Images.Media.InsertImage(applicationContext.ContentResolver, bitmap, $"{DateTime.Now.ToString("O").Replace(':', '-').Replace('.', '-').Replace('T', ' ')}", "");
             }
 
+            var quality = currentRequestParameters.PercentQuality == 0 ? 80 : currentRequestParameters.PercentQuality;
             using (bitmap)
-            {
-                bitmap.Compress(Bitmap.CompressFormat.Jpeg, currentRequestParameters.PercentQuality, memoryStream);
-            }
+                await bitmap.CompressAsync(Bitmap.CompressFormat.Jpeg, quality, memoryStream);
+
             memoryStream.Seek(0L, SeekOrigin.Begin);
             return memoryStream;
+
+
+            Bitmap? LoadScaledBitmap()
+            {
+                using var contentResolver = applicationContext.ContentResolver;
+                if (contentResolver == null)
+                    return null;
+
+                var (sampled,exif) = LoadResampledBitmap(contentResolver, uri, currentRequestParameters.MaxPixelWidth, currentRequestParameters.MaxPixelHeight);
+
+                try
+                {
+                    return ExifRotateBitmap(sampled, exif);
+                }
+                catch (Exception e)
+                {
+                    log.LogTrace(e, $"ExifRotateBitmap exception");
+                    return sampled;
+                }
+                finally
+                {
+                    exif?.Dispose();
+                }
+            }
         }
 
-        private Bitmap? LoadScaledBitmap(Uri uri, RequestParameters currentRequestParameters)
+        private (Bitmap?,ExifInterface?) LoadResampledBitmap(ContentResolver contentResolver, Uri uri, int destWidth, int destHeight)
         {
-            var contentResolver = applicationContext.ContentResolver;
-            if (contentResolver == null)
-                return null;
-
-            var maxSize = GetMaximumDimension(contentResolver, uri);
-
-            Bitmap? sampled;
-            if (currentRequestParameters.MaxPixelWidth != 0 || currentRequestParameters.MaxPixelHeight != 0)
+            static Size GetMaximumDimension(Stream inputStream)
             {
-                int sampleSize=0; // = Math.Max(currentRequestParameters.MaxPixelWidth, currentRequestParameters.MaxPixelHeight);
-                if (currentRequestParameters.MaxPixelWidth != 0)
-                    sampleSize = (int)Math.Ceiling(maxSize.Width / (double)currentRequestParameters.MaxPixelWidth);
-                if (currentRequestParameters.MaxPixelHeight != 0)
-                    sampleSize = Math.Max(sampleSize, (int)Math.Ceiling(maxSize.Height / (double)currentRequestParameters.MaxPixelHeight));
-
+                var optionsJustBounds = new BitmapFactory.Options { InJustDecodeBounds = true };
+                // ReSharper disable once UnusedVariable
+                var metadataResult = BitmapFactory.DecodeStream(inputStream, null, optionsJustBounds);
+                return new Size(optionsJustBounds.OutWidth, optionsJustBounds.OutHeight);
+            }
+            
+            static int GetBestSampleSize(Size sourceSize, int destWidth, int destHeight)
+            {
+                var sampleSize = 1; // = Math.Max(currentRequestParameters.MaxPixelWidth, currentRequestParameters.MaxPixelHeight);
+                if (destWidth != 0)
+                    sampleSize = (int) Math.Ceiling(sourceSize.Width / (double) destWidth);
+                if (destHeight != 0)
+                    sampleSize = Math.Max(sampleSize, (int) Math.Ceiling(sourceSize.Height / (double) destHeight));
+            
                 if (sampleSize < 1)
                     sampleSize = 1;
-                sampled = LoadResampledBitmap(contentResolver, uri, sampleSize);
+                return sampleSize;
             }
-            else
-                sampled = LoadResampledBitmap(contentResolver, uri, 1);
-
-            try
-            {
-                return ExifRotateBitmap(contentResolver, uri, sampled);
-            }
-            catch (Exception e)
-            {
-                log.LogTrace(e, $"ExifRotateBitmap exception");
-                return sampled;
-            }
-        }
-
-        private Bitmap? LoadResampledBitmap(ContentResolver contentResolver, Uri uri, int sampleSize)
-        {
-            if (sampleSize == 1)
-            {
-                if (Build.VERSION.SdkInt >= BuildVersionCodes.P)
-                {
-                    var source = ImageDecoder.CreateSource(contentResolver, uri);
-                    return ImageDecoder.DecodeBitmap(source);
-                }
-
-#pragma warning disable 618
-                //Obsolete in API 28+ (crash)
-                return MediaStore.Images.Media.GetBitmap(contentResolver, uri);
-#pragma warning restore 618
-            }
-
+            
             using var inputStream = contentResolver.OpenInputStream(uri);
-            var optionsDecode = new BitmapFactory.Options { InSampleSize = sampleSize };
-            return BitmapFactory.DecodeStream(inputStream, null, optionsDecode);
-        }
-
-        private static Size GetMaximumDimension(ContentResolver contentResolver, Uri uri)
-        {
-            using var inputStream = contentResolver.OpenInputStream(uri);
-            var optionsJustBounds = new BitmapFactory.Options
-            {
-                InJustDecodeBounds = true
-            };
-            // ReSharper disable once UnusedVariable
-            var metadataResult = BitmapFactory.DecodeStream(inputStream, null, optionsJustBounds);
-            return new Size(optionsJustBounds.OutWidth, optionsJustBounds.OutHeight);
-        }
-
-        private Bitmap? ExifRotateBitmap(ContentResolver contentResolver, Uri uri, Bitmap? bitmap)
-        {
-            if (bitmap == null)
-                return null;
-
-            int rotationInDegrees;
-
+            if (inputStream == null)
+                return (null,null);
+            var maxSize = GetMaximumDimension(inputStream);
+            var sampleSize = GetBestSampleSize(maxSize, destWidth, destHeight);
+            
+            inputStream.Seek(0, SeekOrigin.Begin);
+            ExifInterface? exif = null;
             if (Build.VERSION.SdkInt >= BuildVersionCodes.N)
             {
-                using var stream = contentResolver.OpenInputStream(uri);
                 //API 24+
-                using var exif = new ExifInterface(stream!);
-                var rotation = exif.GetAttributeInt(ExifInterface.TagOrientation, (int)Orientation.Normal);
-                rotationInDegrees = ExifToDegrees(rotation);
+                exif = new ExifInterface(inputStream);
             }
             else
             {
                 var realPath = GetRealPathFromUri(contentResolver, uri);
                 if (realPath != null)
-                {
-                    var exif = new ExifInterface(realPath);
-                    var rotation = exif.GetAttributeInt(ExifInterface.TagOrientation, (int)Orientation.Normal);
-                    rotationInDegrees = ExifToDegrees(rotation);
-                }
+                    exif = new ExifInterface(realPath);
                 else
-                {
-                    rotationInDegrees = 0;
-                    log.LogTrace("ExifRotateBitmap can not load exif data from external image on api < 24");
-                }
+                    log.LogTrace("Can not load exif data from external image on api < 24");
             }
+            
+            //This returns a straight bitmap. But <e want a rotated bitmap as we straight it ourself. So don't use this code.
+//             if (sampleSize == 1)
+//             {
+//                 if (Build.VERSION.SdkInt >= BuildVersionCodes.P)
+//                 {
+//                     var source = ImageDecoder.CreateSource(contentResolver, uri);
+//                     return ImageDecoder.DecodeBitmap(source);
+//                 }
+//
+// #pragma warning disable 618
+//                 //Obsolete in API 28+ (crash)
+//                 return MediaStore.Images.Media.GetBitmap(contentResolver, uri);
+// #pragma warning restore 618
+//             }
+
+            var optionsDecode = new BitmapFactory.Options
+            {
+                InSampleSize = sampleSize,
+                InPreferredConfig = Bitmap.Config.Argb8888
+            };
+
+            inputStream.Seek(0, SeekOrigin.Begin);
+            return (BitmapFactory.DecodeStream(inputStream, null, optionsDecode), exif);
+        }
+
+
+        private Bitmap? ExifRotateBitmap(Bitmap? bitmap, ExifInterface? exif)
+        {
+            if (bitmap == null)
+                return null;
+
+            var rotation = exif?.GetAttributeInt(ExifInterface.TagOrientation, (int)Orientation.Normal) ?? 0;
+            var rotationInDegrees = ExifToDegrees(rotation);
 
             if (rotationInDegrees == 0)
                 return bitmap;
             using var matrix = new Matrix();
             matrix.PreRotate(rotationInDegrees);
-            var newBitmap = Bitmap.CreateBitmap(bitmap, 0, 0, bitmap.Width, bitmap.Height, matrix, true);
+
+            var w = bitmap.Width;
+            var h = bitmap.Height;
+            
+            var newBitmap = Bitmap.CreateBitmap(bitmap, 0, 0, w, h, matrix, true);
             bitmap.Dispose();
             return newBitmap;
         }
