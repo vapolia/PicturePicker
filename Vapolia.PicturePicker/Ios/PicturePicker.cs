@@ -125,7 +125,7 @@ namespace Vapolia.PicturePicker.PlatformLib
                         var tcs0 = new TaskCompletionSource<NSDictionary>();
                         PHImageManager.DefaultManager.RequestImageData(asset, new PHImageRequestOptions {NetworkAccessAllowed = false, DeliveryMode = PHImageRequestOptionsDeliveryMode.Opportunistic, ResizeMode = PHImageRequestOptionsResizeMode.None}, (nsData, uti, orientation, dictionary) =>
                         {
-                            var imageSource = CGImageSource.FromData(nsData);
+                            using var imageSource = CGImageSource.FromData(nsData);
                             var meta = imageSource.CopyProperties(new CGImageOptions(), 0);
                             tcs0.TrySetResult(meta);
                         });
@@ -224,58 +224,58 @@ namespace Vapolia.PicturePicker.PlatformLib
 
         private async Task<bool> HandleImagePick(UIImage? image, NSDictionary? metadata, Action<Task<bool>>? savingTaskAction)
         {
+            if (image == null) 
+                return false;
+
             string? imageFile = null;
-            if (image != null)
+            var tcsSaving = new TaskCompletionSource<bool>();
+            savingTaskAction?.Invoke(tcsSaving.Task);
+
+            if (shouldSaveToGallery)
             {
-                var tcsSaving = new TaskCompletionSource<bool>();
-                savingTaskAction?.Invoke(tcsSaving.Task);
+                var tcs2 = new TaskCompletionSource<bool>();
+                image.SaveToPhotosAlbum((uiImage, error) => tcs2.TrySetResult(error == null));
+                await tcs2.Task;
+            }
 
-                if (shouldSaveToGallery)
-                {
-                    var tcs2 = new TaskCompletionSource<bool>();
-                    image.SaveToPhotosAlbum((uiImage, error) => tcs2.TrySetResult(error == null));
-                    await tcs2.Task;
-                }
-
-                try
-                {
-                    // resize the image
-                    if (_maxPixelWidth > 0 || _maxPixelHeight > 0)
-                        image = image.ImageToFitSize(new CGSize(_maxPixelWidth, _maxPixelHeight));
+            try
+            {
+                // resize the image
+                if (_maxPixelWidth > 0 || _maxPixelHeight > 0)
+                    image = image.ImageToFitSize(new CGSize(_maxPixelWidth, _maxPixelHeight));
                     
-                    if (File.Exists(_filePath))
-                        File.Delete(_filePath);
+                if (File.Exists(_filePath))
+                    File.Delete(_filePath);
 
-                    // rotate the CgImage if the orientation is not already good
-                    var imageDestination = CGImageDestination.Create(new CGDataConsumer(NSUrl.FromFilename(_filePath)), UTType.JPEG, 1, new CGImageDestinationOptions {LossyCompressionQuality = (float) (_percentQuality / 100.0)});
-                    metadata = FixOrientationMetadata(metadata);
-                    var cgImage = FixOrientation(image);
-                    imageDestination.AddImage(cgImage, metadata);
-                    if (!imageDestination.Close()) //Dispose is called by Close ...
-                        log.LogError("PicturePicker: failed to copy photo on save to {0}", _filePath);
-                    else
-                        imageFile = _filePath;
+                // rotate the CgImage if the orientation is not already good
+                using var imageDestination = CGImageDestination.Create(new CGDataConsumer(NSUrl.FromFilename(_filePath)), UTType.JPEG, 1, new CGImageDestinationOptions {LossyCompressionQuality = (float) (_percentQuality / 100.0)});
+                metadata = FixOrientationMetadata(metadata);
+                var cgImage = FixOrientation(image);
+                imageDestination.AddImage(cgImage, metadata);
+                if (!imageDestination.Close()) //Dispose is called by Close ...
+                    log.LogError("PicturePicker: failed to copy photo on save to {0}", _filePath);
+                else
+                    imageFile = _filePath;
 
-                    //using (var data = image.AsJPEG((float) (_percentQuality/100.0)))
-                    //{
-                    //    using (var stream = data.AsStream())
-                    //    {
-                    //        await ImageHelper.SaveImage(_filePath, stream, CancellationToken.None).ConfigureAwait(false);
-                    //        imageFile = _filePath;
-                    //    }
-                    //}
+                //using (var data = image.AsJPEG((float) (_percentQuality/100.0)))
+                //{
+                //    using (var stream = data.AsStream())
+                //    {
+                //        await ImageHelper.SaveImage(_filePath, stream, CancellationToken.None).ConfigureAwait(false);
+                //        imageFile = _filePath;
+                //    }
+                //}
 
-                    tcsSaving.SetResult(true);
-                }
-                catch (Exception e)
-                {
-                    log.LogError(e, "PicturePicker error in HandleImagePick");
-                    tcsSaving.SetResult(false);
-                }
-                finally
-                {
-                    image.Dispose();
-                }
+                tcsSaving.SetResult(true);
+            }
+            catch (Exception e)
+            {
+                log.LogError(e, "PicturePicker error in HandleImagePick");
+                tcsSaving.SetResult(false);
+            }
+            finally
+            {
+                image.Dispose();
             }
 
             return imageFile != null;
