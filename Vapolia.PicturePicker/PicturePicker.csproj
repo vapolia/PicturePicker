@@ -1,31 +1,23 @@
-﻿<Project Sdk="MSBuild.Sdk.Extras/2.1.2">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;Xamarin.iOS10;MonoAndroid10.0</TargetFrameworks>
+<PropertyGroup>
+    <TargetFrameworks>net8-ios;net8-android;net8</TargetFrameworks>
     <AssemblyName>Vapolia.PicturePicker</AssemblyName>
     <RootNamespace>Vapolia.PicturePicker</RootNamespace>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
-    <DebugType>portable</DebugType>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <SingleProject>true</SingleProject>
+    <UseMaui>true</UseMaui>
+
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">14.2</SupportedOSPlatformVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">21.0</SupportedOSPlatformVersion>
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Shared\**\*.cs" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
-    <PackageReference Include="Xamarin.Essentials" Version="1.7.0" />
-  </ItemGroup>
-
-  <ItemGroup Condition=" $(TargetFramework.StartsWith('MonoAndroid')) ">
-    <Compile Include="Android\**\*.cs" />
-  </ItemGroup>
-  
-  <ItemGroup Condition=" $(TargetFramework.StartsWith('Xamarin.iOS')) ">
-    <Compile Include="Ios\**\*.cs" />
-  </ItemGroup>
-
-  <ItemGroup Condition=" $(TargetFramework.StartsWith('netstandard')) ">
-    <Compile Include="Netstandard\**\*.cs" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Maui.Controls" Version="8.0.6" />
+    <None Include="..\\LICENSE" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <!--  nuget configurable properties -->
@@ -38,11 +30,11 @@
   <!--  nuget properties -->
   <PropertyGroup>
     <PackageId>Vapolia.PicturePicker</PackageId>
-<!--    <PackageIconUrl>https://github.com/softlion/XamarinFormsGesture/favicon.ico</PackageIconUrl>-->
-    <Summary>Picture picker (photo or library) for iOS and Android (Mvvmcross plugin)</Summary>
-    <PackageTags>picture picker xamarin ios android forms mvvmcross mvvmlight</PackageTags>
-    <Title>Picture picker (photo or library) for Xamarin iOS and Android, Forms, Mvvmcross, Mvvmlight, or Native</Title>
-    <Description>Picture picker (photo or library) for Xamarin iOS and Android, Forms, Mvvmcross, Mvvmlight, or Native</Description>
+<!--    <PackageIconUrl>https://github.com/vapolia/PicturePicker/favicon.ico</PackageIconUrl>-->
+    <Summary>Picture picker (photo or library) for MAUI on iOS and Android</Summary>
+    <PackageTags>picture picker maui android ios</PackageTags>
+    <Title>Picture picker (photo or library) for MAUI (Android, iOS)</Title>
+    <Description>Picture picker (photo or library) for MAUI (Android, iOS)</Description>
     <PackageLicenseUrl>https://vapolia.eu</PackageLicenseUrl>
     <PackageVersion>$(Version)$(VersionSuffix)</PackageVersion>
     <Product>PicturePicker</Product>
@@ -50,14 +42,14 @@
     <Authors>Benjamin Mayrargue</Authors>
     <Owners>https://vapolia.eu</Owners>
     <NeutralLanguage>en</NeutralLanguage>
-    <Copyright>© 2016-2020 Vapolia</Copyright>
-    <RepositoryUrl>https://github.com/softlion/XamarinFormsGesture</RepositoryUrl>
+    <Copyright>© 2016-2024 Vapolia</Copyright>
+    <RepositoryUrl>https://github.com/vapolia/PicturePicker</RepositoryUrl>
     <UseFullSemVerForNuGet>false</UseFullSemVerForNuGet>
-<!--    <PackageLicenseFile>LICENSE</PackageLicenseFile>-->
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageProjectUrl>https://github.com/softlion/XamarinFormsGesture</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/vapolia/PicturePicker</PackageProjectUrl>
     <PackageReleaseNotes>
-      4.0.0: now framework independant!
+      1.0.0: Maui version
     </PackageReleaseNotes>
   </PropertyGroup>
 
