@@ -18,6 +18,8 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
     <PackageReference Include="Microsoft.Maui.Controls" Version="8.0.6" />
     <None Include="..\\LICENSE" Pack="true" PackagePath="" />
+    <None Include="..\\README.md" Pack="true" PackagePath="" />
+    <None Include="..\\icon.png" Pack="true" PackagePath="" />
   </ItemGroup>
 
   <!--  nuget configurable properties -->
@@ -46,6 +48,8 @@
     <RepositoryUrl>https://github.com/vapolia/PicturePicker</RepositoryUrl>
     <UseFullSemVerForNuGet>false</UseFullSemVerForNuGet>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PackageProjectUrl>https://github.com/vapolia/PicturePicker</PackageProjectUrl>
     <PackageReleaseNotes>

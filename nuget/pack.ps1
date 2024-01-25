@@ -1,3 +1,6 @@
+# OBSOLETE. 
+# Use github action instead
+
 if ($IsMacOS) {
     $msbuild = "msbuild"
 } else {
@@ -8,8 +11,8 @@ if ($IsMacOS) {
 
 #####################
 #Build release config
-$version="4.0.1"
-$versionSuffix=""
+$version="5.0.0"
+$versionSuffix="pre1"
 $nugetVersion="$version$versionSuffix"
 
 del *.nupkg
