@@ -37,7 +37,6 @@
     <PackageTags>picture picker maui android ios</PackageTags>
     <Title>Picture picker (photo or library) for MAUI (Android, iOS)</Title>
     <Description>Picture picker (photo or library) for MAUI (Android, iOS)</Description>
-    <PackageLicenseUrl>https://vapolia.eu</PackageLicenseUrl>
     <PackageVersion>$(Version)$(VersionSuffix)</PackageVersion>
     <Product>PicturePicker</Product>
     <Company>Vapolia</Company>
