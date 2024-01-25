@@ -49,7 +49,7 @@ jobs:
           echo "PACKAGE VERSION: $VERSION"
           New-Item -ItemType Directory -Force -Path ./artifacts
           
-          dotnet pack --output ./artifacts -c Release -p:PackageVersion=$VERSION $PROJECT
+          dotnet pack --no-build --output ./artifacts -c Release -p:PackageVersion=$VERSION $PROJECT
           # needs to CD because nuget push can't find nuget packages with a linux style path
           cd ./artifacts
           dotnet nuget push *.nupkg --skip-duplicate -k $env:NUGET_AUTH_TOKEN -s $env:NUGET_TARGET
